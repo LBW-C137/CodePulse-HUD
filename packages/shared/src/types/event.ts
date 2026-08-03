@@ -102,7 +102,7 @@ export interface AgentEvent {
     activityRefresh?: boolean
   }
 
-  /** 原始 Hook 载荷，仅供进程内归一化/调试，禁止持久化到 SQLite。 */
+  /** 原始 Hook 载荷，仅供进程内归一化/调试，禁止持久化。 */
   raw?: unknown
   /** 事件发生时间（epoch 毫秒，缺失时在归一化阶段分配）。 */
   timestamp: number

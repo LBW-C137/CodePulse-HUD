@@ -1,511 +1,112 @@
 <div align="center">
 
-# CodePulse / 码脉
+# CodePulse HUD
 
-**面向 AI 编程代理的本地状态中心。**
+**常驻桌面的本地 AI 编程状态副驾。**
 
-一眼看清 Codex、Claude Code、Grok 与 Kimi Code 正在工作、在等你、已完成，还是卡住了——
-无需切回终端反复确认。
+同时使用 Claude Code、Codex、Kimi Code 或 Grok 时，不必反复切回终端确认它们是否仍在工作、等待你、已经完成或遇到问题。
 
-[![Dashboard](https://img.shields.io/badge/Dashboard-v1.3.3-brightgreen)](https://github.com/noeigenstate/CodePulse/releases/tag/v1.3.3)
-[![HUD](https://img.shields.io/badge/HUD-v1.4.0--hud.6-orange)](https://github.com/noeigenstate/CodePulse/releases/tag/v1.4.0-hud.6)
-[![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)](#下载)
-[![release](https://github.com/noeigenstate/CodePulse/actions/workflows/release.yml/badge.svg)](https://github.com/noeigenstate/CodePulse/actions/workflows/release.yml)
-[![node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](#开发)
-[![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-F69220?logo=pnpm&logoColor=white)](#开发)
-[![built with](https://img.shields.io/badge/built%20with-Electron%20%2B%20TypeScript-47848F?logo=electron&logoColor=white)](#工作原理)
+[![release](https://img.shields.io/github/v/release/LBW-C137/CodePulse-HUD?label=release)](https://github.com/LBW-C137/CodePulse-HUD/releases/latest)
+[![platform](https://img.shields.io/badge/platform-Windows-blue)](#安装)
+[![workflow](https://github.com/LBW-C137/CodePulse-HUD/actions/workflows/release.yml/badge.svg)](https://github.com/LBW-C137/CodePulse-HUD/actions/workflows/release.yml)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-[English](./README.md) · [简体中文](./README.zh-CN.md) · [产品需求](./requirements.md)
+[English](./README.md) · [简体中文](./README.zh-CN.md) · [HUD 设计说明](./docs/HUD.md)
 
 </div>
 
----
-
-AI 编程代理很擅长无人值守地干活，却不擅长在需要你时通知你。CodePulse
-监听 Codex、Claude Code、Grok 与 Kimi Code 暴露的生命周期 hook，把每一个事件
-送进同一个状态机，再通过几种聚焦的界面形态呈现出来：
-
-- 📊 **实时 Dashboard** —— Claude Code / Codex / Grok / Kimi Code 自适应分栏，
-  品牌色面板、项目卡片、上下文与额度进度一目了然。
-- 🪟 **副驾 HUD** —— 可选的透明、无边框、置顶形态，适合常驻副屏；提示持续可见，
-  又不抢走当前窗口焦点。
-- 📈 **本地统计后台** —— 右上角「后台」进入全屏分析：Token、时长、项目排行、
-  模型占比与高峰时段，全部从本机 SQLite 历史汇总。
-- ⚙️ **适合各自形态的设置** —— Dashboard 保留熟悉的主题与分栏设置；HUD
-  额外提供透明度和克制的提示动效设置。
-- 💾 **同一个本地核心** —— 两种实时形态共用 hook、状态机、用量数据、历史与本地 API。
-
-CodePulse 是主体；实时 Dashboard 与副驾 HUD 是它的两种并列呈现形态，而不是两个独立项目。
-**「后台」** 则是二者共用的历史数据视图。
-
-一切都在 **本地** 运行。服务只绑定回环地址，提示词仅保存短预览（绝不保存全文），
-且 CodePulse 未运行时 hook 会静默失败——你的 agent 永远不会被阻塞或拖慢。
-
-## 软件截图
-
-实时 Dashboard 与副驾 HUD 用不同方式呈现当前工作；本地统计后台则提供共用的历史视图。
-
-### 实时控制台
-
 <p align="center">
-  <img src="./docs/screenshots/dashboard-zh.png" alt="CodePulse 实时控制台" width="920" />
+  <img src="./docs/screenshots/hud-zh.png" alt="CodePulse HUD 中文界面" width="560" />
 </p>
 
-四栏自适应控制台：Claude 与 Kimi Code 显示 **5 小时 + 每周** 额度；Codex / Grok
-仅显示 **每周额度**。项目卡片展示稳定识别的模型、思考深度、CLI 原生耗时、上下文窗口
-与状态。右上角齿轮可设置主题和显示哪些 CLI；**「后台」** 可进入本地统计。_（图为示意数据。）_
+CodePulse HUD 是一个透明、无边框、置顶但不主动抢焦点的 Windows 桌面应用。它通过各 CLI 的原生 hook 汇总实时状态，把真正需要你注意的卡片提升为橙色，其余活动保持安静。
 
-### 副驾 HUD
+## 主要功能
 
-<p align="center">
-  <img src="./docs/screenshots/hud-zh.png" alt="CodePulse 副驾 HUD" width="560" />
-</p>
+- **多项目与多 agent 独立显示**：同一项目中的多个 agent 紧挨归组，但每张卡片的状态、计时、上下文、动效和操作互不干扰。
+- **稳定的注意语义**：等待授权/输入、未读完成和未读故障保持橙色；普通执行过程使用中性色。
+- **“已读”与“完成”分工**：中间等待状态使用“已读”确认提醒，真正结束的任务使用“完成”。
+- **临时关闭单卡**：右上角 `×` 只隐藏当前卡片，效果与停留时间到期一致；新的真实活动会让它重新出现。
+- **可控停留时长**：空闲、已取消和已经确认的结果卡片统一遵守 10 / 30 / 60 / 120 / 240 分钟设置。
+- **上下文与额度摘要**：显示可读取的上下文用量，以及 Claude、Codex、Kimi、Grok 可提供的账户额度。
+- **适合副屏常驻**：支持浅色、深色、自动主题，20%–100% 背景透明度，常亮、呼吸或脉冲注意效果，以及单列/紧凑网格布局。
+- **低 I/O 运行**：启动时恢复一次本机会话，之后主要依赖 hook 实时更新，避免持续扫描磁盘。
 
-可选 HUD 把相同的项目状态、上下文与额度数据收进适合副屏常驻的紧凑表面。同项目的多个
-agent 在细外框内归组，但每张卡片的状态与操作仍然独立；等待阶段使用**「已读」**，
-真正完成后使用**「完成」**。右上角的小型 **×** 可暂时关闭单张卡片，出现新的真实活动后
-仍会按原规则重新显示。完整设计契约见
-[HUD 副驾概念说明](docs/CodePulse/HUD-companion-concept.md)。_（图为示意数据。）_
+CodePulse HUD 不包含原项目曾提供的统计后台，也不再维护 SQLite 活动历史。它专注回答一件事：**现在有哪些 AI 编程任务需要我看一眼？**
 
-### 本地统计后台
+## 安装
 
-<p align="center">
-  <img src="./docs/screenshots/stats-zh.png" alt="CodePulse 本地统计后台" width="920" />
-</p>
+当前版本只发布 Windows x64 安装包。
 
-从本机 SQLite 汇总 Token、开发时长、项目排行、模型占比与高峰时段；支持今日 / 近 7 天 / 近 30 天与按日 / 周 / 月趋势，数据不上传云端。_（图为示意数据。）_
+1. 如果正在使用旧版 CodePulse，请先从托盘退出；以后只使用 HUD 时，建议先卸载旧版。
+2. 在 [Releases](https://github.com/LBW-C137/CodePulse-HUD/releases/latest) 下载 `CodePulse-HUD_<版本>_x64-setup.exe`。
+3. 运行安装器并启动 **CodePulse HUD**。当前安装包未进行商业代码签名，Windows SmartScreen 可能要求你选择“更多信息 → 仍要运行”。
+4. 首次启动会检查并配置本机 CLI hook。应用只管理自己的 CodePulse hook，已有的其它 hook 与偏好会保留。
+5. Codex 用户还需要在 Codex 中输入 `/hooks`，选择 CodePulse hook，并信任界面列出的事件权限。
 
-## 功能特性
+旧版 CodePulse 与 CodePulse HUD 沿用同一套兼容 hook 标识和本机端口，**不要同时运行两个应用**。若要迁移，请按“退出/卸载旧版 → 安装并启动 HUD”的顺序操作。
 
-|                             |                                                                                                         |
-| --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 🚦 **统一状态机**           | 所有 agent 共用一套轮次生命周期：空闲 → 处理中 → 执行工具 → 等待授权/输入 → 完成 / 出错 / 取消 / 卡住。 |
-| 🧭 **多 agent、多工作区**   | 跨项目并发会话各自独立追踪；项目卡片顺序在状态更新时保持固定。                                          |
-| 🪟 **Dashboard 自适应分屏** | 仅在对应 CLI 有任务或仍保留额度时显示分栏，可从一栏自动扩展到四栏。                                     |
-| 🎨 **Dashboard 自动主题**   | 自动模式在 08:00–20:00 使用白色，其余时间使用黑色，也可手动固定主题。                                   |
-| 🪟 **副驾 HUD 形态**        | HUD 预发布版增加透明、无边框、置顶的副屏表面，但不取代完整 Dashboard 形态。                             |
-| 🎨 **HUD 外观**             | 调整面板透明度、自动/白色/黑色外观，以及常亮、呼吸或脉冲提示效果。                                      |
-| ⚙️ **CLI 面板设置**         | 通过右上角齿轮增删要显示的 CLI；隐藏面板不会停止后台同步或 HUD 状态更新。                               |
-| 🧠 **模型、深度与耗时**     | 稳定显示实际模型、可读取的思考深度和 CLI 原生耗时，刷新后仍可恢复。                                     |
-| 📈 **上下文追踪**           | 上下文用量保持线性增长；忽略读取噪声造成的小幅回退，并正确处理上下文压缩。                              |
-| 🎟️ **配额感知**             | 已显示额度保持常驻；更高读数立即更新，更低读数连续确认后才判定为官方重置。                              |
-| 🔔 **Dashboard 桌面通知**   | 稳定版 Dashboard 保留完成与疑似卡住通知，并使用简短、克制的提示词摘要。                                 |
-| 🟠 **HUD 持续注意提示**     | HUD 的日常活动保持中性；未读完成、明确介入和未读故障状态才提升为橙色。                                  |
-| 🕰️ **卡住检测**             | 看门狗会标记长时间无活动的轮次，让静默失败不再白白浪费时间。                                            |
-| 💾 **本地历史**             | 事件、会话、轮次与 token 快照持久化到 SQLite——数据归你所有，可查可删。                                  |
-| 📊 **本地统计后台**         | 从 SQLite 汇总 Token / 开发时长 / 项目 / 对话；支持今日、近 7 天、近 30 天与按日/周/月趋势。            |
-| 🔌 **开放本地 API**         | `127.0.0.1:17888` 上的纯 HTTP + WebSocket，可用于本地集成。                                             |
+## 支持的 CLI
 
-## 本地统计后台
+| CLI         | 状态来源                               | 首次使用注意事项                            |
+| ----------- | -------------------------------------- | ------------------------------------------- |
+| Claude Code | 原生 hooks、status line 与本机会话恢复 | 启动 HUD 后会自动检查配置                   |
+| Codex CLI   | 原生 hooks 与本机会话恢复              | 需要在 `/hooks` 中手动信任 CodePulse hook   |
+| Kimi Code   | 原生 hooks、会话与本地额度信息         | 可用额度会在 HUD 启动时读取，不必先开启对话 |
+| Grok        | 原生 hooks 与本机会话恢复              | 启动 HUD 后会自动检查配置                   |
 
-实时 Dashboard 回答「现在谁在跑」；**本地统计后台** 回答「这段时间花了多少资源」。
+CLI 自身的 hook 事件和本地数据格式可能随版本变化；若某项状态缺失，请先确认使用的是该 CLI 的近期版本，再到本仓库提交 issue。
 
-1. 在实时控制台右上角点击 **「后台」**（英文界面为 **Insights**）。
-2. 全屏打开统计台，数据来自本机 `codepulse.sqlite`（经应用内 IPC 聚合，**不上传云端**）。
-3. 选择 **今日 / 近 7 天 / 近 30 天**，需要时点 **「刷新数据」** 重新汇总最新事件。
-4. 趋势图可切换 **按日 / 按周 / 按月**。按 `Esc` 或 **「退出大屏」** 返回实时控制台。
+## 卡片行为
 
-后台主要模块：
+| 状态                         | HUD 表现       | 操作                                         |
+| ---------------------------- | -------------- | -------------------------------------------- |
+| 思考、执行工具               | 中性卡片       | 无需处理                                     |
+| 等待授权、等待输入           | 橙色并持续显示 | “已读”只确认你看到了提醒；实际状态仍保持等待 |
+| 已完成                       | 橙色并持续显示 | “完成”确认本轮结果，之后按停留时长清理       |
+| 出错、疑似卡住、达到用量上限 | 橙色并持续显示 | “已读”确认提醒，新的运行事件会继续更新状态   |
+| 空闲、取消或已确认结果       | 中性卡片       | 到达设定时长后自动隐藏，也可点 `×` 提前隐藏  |
 
-| 模块             | 说明                                                                  |
-| ---------------- | --------------------------------------------------------------------- |
-| **概览 KPI**     | 总消耗 Token、总/日均开发时长、项目数、对话次数，并给出与上期的环比。 |
-| **趋势**         | Token 消耗与开发时长曲线，便于发现峰值日。                            |
-| **模型占比**     | 各模型用量份额（如 Claude / GPT / Gemini 等）。                       |
-| **高峰时段**     | 按星期 × 小时的热力图，看清活跃集中时段。                             |
-| **项目消耗排行** | 按项目汇总 Token、时长、对话次数与最近活跃时间。                      |
-| **使用洞察**     | 基于本地汇总的轻量提示（峰值日、主力模型、效率建议等）。              |
-| **分布与评分**   | 项目类型、文件类型（尽力而为）、单次对话 Token 分桶、本地效率评分。   |
+完整行为约定见 [HUD 设计说明](./docs/HUD.md)。
 
-> 有 CLI 任务并成功写入本地库后，后台才会逐步填满；全新安装或刚清理历史时会提示暂无数据。  
-> Grok 执行中的上下文占用会优先读活动会话的 `updates.jsonl`，任务结束后以 `signals.json` 为准。
+## 本地与隐私
 
-## 工作原理
-
-```
- Codex / Claude Code / Grok / Kimi Code
-   │  生命周期 hook 与 status line（零依赖 Node 脚本）
-   ▼
- POST /api/events ──► 适配器 ──► StatusHub（纯 reducer + 规则引擎）
- （Fastify，回环）     归一化         │
-                                     ├─► SQLite（事件 / 会话 / 轮次 / token / 工作区）
-                                     ├─► 托盘 / 注意提示
-                                     ├─► 桌面通知（Dashboard 形态）
-                                     └─► WebSocket / IPC 推送 ──► Dashboard 或副驾 HUD（React）
-                                                              └─► 共用统计后台（SQLite 聚合）
-```
-
-仓库是一个 `pnpm` workspace：
-
-```
-apps/desktop/        Electron 应用（main / preload / renderer，含统计后台 UI）
-packages/
-  shared/            领域类型（Agent、Turn、AgentEvent、UsageStats…）与常量
-  core/              状态机、规则引擎、聚合、StatusHub
-  adapters/          Codex / Claude / Grok / Kimi 原始 payload → AgentEvent 映射
-  storage/           SQLite schema（Drizzle ORM）、仓储与用量统计查询
-  local-server/      Fastify HTTP + WebSocket 路由
-  hooks/             agent 调用的独立 hook 脚本（含 Codex/Grok/Kimi 用量读取）
-scripts/             后端冒烟测试
-tests/               单元测试
-```
-
-**技术栈：** Electron · electron-vite · TypeScript · React · Tailwind · Zustand ·
-Fastify · better-sqlite3 · Drizzle ORM。
-
-## 下载
-
-可以根据 CodePulse 所在的屏幕选择合适的呈现形态：
-
-| 形态           | 当前版本                                                                                     | 更适合                                             |
-| -------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| 实时 Dashboard | [v1.3.3 稳定版](https://github.com/noeigenstate/CodePulse/releases/tag/v1.3.3)               | 使用完整、自适应多分栏的信息密集型控制台。         |
-| 副驾 HUD       | [v1.4.0-hud.6 预发布版](https://github.com/noeigenstate/CodePulse/releases/tag/v1.4.0-hud.6) | 常驻副屏，以持续、低打扰的方式提示需要注意的项目。 |
-
-> HUD 安装版来自 `hud-companion-concept` 分支，并使用 `v*-hud.*` 预发布标签。
-> 两种形态目前共享应用身份、userData、hook 和端口，因此同一时间请选择其中一种安装；
-> HUD 应作为原位实验切换安装，不要与稳定版 Dashboard 并行安装。
-
-从 [GitHub Releases](https://github.com/noeigenstate/CodePulse/releases)
-下载安装包：
-
-- **Windows：** `CodePulse_*_x64-setup.exe`
-- **macOS Apple Silicon：** `CodePulse_*_mac-arm64.dmg`（M 系列芯片）
-- **macOS Intel：** `CodePulse_*_mac-x64.dmg`
-- **Linux x64：** `CodePulse_*_linux-x86_64.AppImage`
-
-Linux 下载后需要先添加可执行权限，再启动 AppImage：
-
-```bash
-chmod +x CodePulse_*_linux-x86_64.AppImage
-./CodePulse_*_linux-x86_64.AppImage
-```
-
-### macOS 首次打开（未签名构建）
-
-当前 Release 中的 macOS 安装包**未做 Apple 代码签名与公证**。用浏览器（如 Chrome）
-下载后，系统会加上隔离标记。双击时可能弹出：
-
-> “CodePulse” is damaged and can’t be opened. You should move it to the Trash.  
-> （“CodePulse”已损坏，无法打开。你应该将它移到废纸篓。）
-
-这**通常不是安装包真的损坏**，而是 Gatekeeper 对未签名 + 隔离 App 的拦截文案。
-「系统设置 → 隐私与安全性 → 仍要打开」对这种 **damaged** 提示**往往无效**。
-
-**推荐做法（终端）：**
-
-1. 打开 DMG，把 `CodePulse.app` 拖到「应用程序」。
-2. 打开「终端」，执行（路径按实际安装位置调整）：
-
-```bash
-xattr -cr /Applications/CodePulse.app
-open /Applications/CodePulse.app
-```
-
-若 App 还在 DMG 卷上，可先对挂载路径执行，例如：
-
-```bash
-xattr -cr /Volumes/CodePulse*/CodePulse.app
-```
-
-3. 之后可从启动台或「应用程序」正常打开。
-
-请按本机芯片选择对应 DMG（arm64 / Intel），架构不对也会打不开。
-
-### macOS 检测不到 Claude / Codex / Grok / Kimi 命令行
-
-从「启动台 / Finder」打开的 App **不会加载** 终端里的 `~/.zshrc` PATH。  
-CLI 若装在 Homebrew（`/opt/homebrew/bin`）或 nvm/npm 全局目录，旧版可能误报「未检测到命令行工具」。
-
-当前版本会自动探测常见安装路径。若仍检测失败，可在终端确认 CLI 可用：
-
-```bash
-which claude codex grok kimi
-claude --version
-codex --version
-grok --version
-kimi --version
-```
-
-也可设置绝对路径后重启 CodePulse：
-
-```bash
-launchctl setenv CLAUDE_CLI_PATH "$(which claude)"
-launchctl setenv CODEX_CLI_PATH "$(which codex)"
-launchctl setenv GROK_CLI_PATH "$(which grok)"
-launchctl setenv KIMI_CLI_PATH "$(which kimi)"
-```
-
-（或在启动 CodePulse 的 shell 中 `export` 上述变量后再 `open -a CodePulse`。）
-
-## 首次运行
-
-1. 打开 CodePulse。
-2. CodePulse 会检查本机 Claude Code、Codex、Grok 和 Kimi Code CLI 配置。
-3. 如果缺少必要项，CodePulse 只会把自己的 hook 与 status line 配置写入：
-   - `~/.claude/settings.json`
-   - `~/.codex/hooks.json`
-   - `~/.codex/config.toml`
-   - `~/.grok/hooks/codepulse.json`（Grok 全局 hooks，默认受信任）
-   - `~/.kimi-code/config.toml`（CodePulse 管理的 Kimi hook 配置块）
-4. 如果配置弹窗提示需要信任 Codex hook，打开一个 Codex 项目终端，运行 `/hooks`，
-   选择 CodePulse hook，并信任：
-   - `SessionStart`
-   - `UserPromptSubmit`
-   - `PreToolUse`
-   - `PermissionRequest`
-   - `PostToolUse`
-   - `Stop`
-5. 运行一轮 Claude Code、Codex、Grok 或 Kimi Code 任务。当前安装的实时形态会开始
-   显示对应项目与用量数据。
-6. Dashboard 中的齿轮用于设置主题与可见 CLI；HUD 中还可设置面板透明度和橙色提示动效。
-7. 需要复盘消耗时，点右上角 **「后台」** 打开本地统计台（详见
-   [本地统计后台](#本地统计后台)）。
-
-CodePulse 只管理 CodePulse 自己的 hook 和 status line 配置。你原有的 hook、模型、
-插件和偏好设置会保留。卸载时，安装器会自动删除 CodePulse 管理的配置。
-
-### 验证
-
-在 Claude Code、Codex、Grok 或 Kimi Code 中跑一次任务，观察对应分屏亮起；也可以检查本地 API：
-
-```bash
-curl http://127.0.0.1:17888/api/health
-curl http://127.0.0.1:17888/api/status
-```
-
-## Dashboard 托盘与通知
-
-稳定版 Dashboard 形态继续保留原有的彩色托盘与选择性桌面通知：
-
-| 颜色    | 含义                       |
-| ------- | -------------------------- |
-| ⚪ 灰色 | 全部空闲                   |
-| 🔵 蓝色 | 有任务正在执行             |
-| 🟡 黄色 | 等待授权或输入，需要你处理 |
-| 🟢 绿色 | 一轮任务已完成且未读       |
-| 🔴 红色 | 发生错误                   |
-| 🟠 橙色 | 疑似卡住                   |
-
-Dashboard 通知会节流并去重；完成提醒使用项目名与精简后的提问摘要。静音会让通知声音
-保持关闭 30 分钟。
-
-## HUD 注意语言
-
-五个语义层级不会变成五种颜色；具体差异由文字和状态标签承载，只有真正需要用户的
-状态才提升为橙色。
-
-| 层级     | 运行时含义                         | 视觉表达 |
-| -------- | ---------------------------------- | -------- |
-| `quiet`  | 空闲、已取消，或已经确认的终结状态 | 中性     |
-| `active` | 已提交提示、思考中或执行工具       | 中性     |
-| `notice` | 一轮任务已完成且未读               | 橙色     |
-| `action` | 正在等待明确的授权或用户输入       | 橙色     |
-| `fault`  | 未读错误、超时/卡住或额度受限      | 橙色     |
-
-这个 HUD 概念不生成系统通知，也不使用会消失的 toast。未读终结状态会一直留在 HUD，
-直到你确认它（或新一轮任务替换它），让副屏本身成为可靠的提示表面；托盘只镜像同一套
-中性 / 橙色层级。
-
-**安静模式**（托盘或顶栏按钮）持续 30 分钟，会把橙色动效收束为常亮，状态本身仍然
-可见。Claude Code 常规的“waiting for your input”空闲提醒会被忽略；`action` 只表示
-CodePulse 确认看到了真实授权请求或明确输入请求。
-
-## 本地 API
-
-仅回环（`127.0.0.1:17888`）——绝不暴露到网络。用环境变量 `CODEPULSE_URL` 可让 hook
-指向其他地址。
-
-| 方法   | 路径                 | 用途                                              |
-| ------ | -------------------- | ------------------------------------------------- |
-| `POST` | `/api/events`        | 接收原始 hook payload（或数组，最多 1000）        |
-| `GET`  | `/api/status`        | Dashboard 使用的完整 `StatusSnapshot`             |
-| `GET`  | `/api/device/status` | 轻量本地客户端使用的精简状态                      |
-| `GET`  | `/api/agents/detect` | 检测本地 Codex / Claude / Grok / Kimi CLI 与 hook |
-| `POST` | `/api/ack/:agent`    | 把某个 agent 的终结结果标记为已读                 |
-| `POST` | `/api/mute`          | `{ "muted": true }` 进入安静模式                  |
-| `GET`  | `/api/health`        | 存活探针                                          |
-| `WS`   | `/ws`                | `status` + 沿用旧命名的 `notification` 注意事件   |
-
-WebSocket 的 `notification` 消息名仅为协议兼容而保留；桌面 HUD 不会把它转成系统
-toast。安静模式也会清除该事件中的声音提示位，兼容仍消费此字段的客户端。
-
-## 局域网设备 API（可选）
-
-ESP32 等只读显示设备使用独立的 `0.0.0.0:17889` 服务。它默认关闭、使用单独的
-设备 token，且不包含事件写入、确认任务或静音接口，因此不会改变上面的回环 API
-安全边界。
-
-```bash
-CODEPULSE_DEVICE_SERVER_ENABLED=1 pnpm dev
-TOKEN="$(tr -d '\r\n' < ~/.codepulse/device-auth)"
-curl -H "X-CodePulse-Device-Token: $TOKEN" \
-  http://<电脑局域网IP>:17889/api/v1/device/status
-```
-
-状态协议包含 CLI 状态、项目名、原始 token、上下文占用、5 小时/每周额度与重置时间，
-并支持 ETag/`304`，让水墨屏在内容未变化时跳过刷新。完整字段、安装版启用方法和固件
-轮询规则见 [局域网设备协议 v1](docs/device-api-v1.md)。
-
-## 数据与隐私
-
-CodePulse 把单个 SQLite 数据库存放在 Electron 的 user-data 目录：
-
-| 操作系统 | 路径                                                       |
-| -------- | ---------------------------------------------------------- |
-| Windows  | `%APPDATA%\CodePulse\codepulse.sqlite`                     |
-| macOS    | `~/Library/Application Support/CodePulse/codepulse.sqlite` |
-| Linux    | `~/.config/CodePulse/codepulse.sqlite`                     |
-
-它记录事件、会话、轮次、工作区与 token 快照。30 天前的原始事件与 token 快照会自动清理。
-提示词只保存短预览，绝不保存全文。删除该文件即可重置全部历史。
-
-**本地统计后台** 只在本机读取上述数据库做聚合展示，不会把用量或项目路径上传到任何服务器。
-局域网设备服务默认关闭；启用后把项目标识缩减为目录名而非绝对工作区路径，并要求独立设备
-token。
+- 任务状态在本机处理，不需要 CodePulse 账号，也没有遥测或统计服务。
+- hook API 仅绑定 `127.0.0.1:17888`，并使用保存在 `~/.codepulse/local-auth` 的本机 token。
+- 应用不保存提示词全文，也不建立 SQLite 活动历史；设置、hook 运行文件与必要凭据保存在本机。
+- 应用会访问 GitHub 检查更新；读取账户额度时，相关 provider 的官方接口或本机凭据链路可能被使用。
+- 卸载器会清理 CodePulse 管理的 hook 配置，同时保留用户自己的其它 hook、模型、插件和偏好。
 
 ## 开发
 
-环境要求：
+需要 Node.js 20+ 与 pnpm 9+：
 
-- **Node.js ≥ 20**（在 22.x 上测试）
-- **pnpm ≥ 9** —— `npm i -g pnpm`
-
-```bash
+```powershell
 pnpm install
-pnpm dev          # 带热重载的应用（electron-vite）
-pnpm typecheck    # 对每个包运行 tsc
-pnpm test         # 单元测试
-pnpm smoke        # 后端集成测试（无需 Electron、无需 agent）
-pnpm lint         # prettier --check
-pnpm format       # prettier --write
-pnpm db:generate  # 从 schema 生成 Drizzle SQL 迁移
+pnpm dev
 ```
 
-workspace 内的包以 TypeScript **源码** 形式被消费（每个包的 `exports` 指向
-`src/index.ts`）；electron-vite 与 esbuild 直接打包源码，因此开发期没有逐包编译步骤。
+提交前的本地验证：
 
-原生依赖的 ABI 会显式切换：`pnpm test` 先为当前 Node.js 运行时重建
-`better-sqlite3`；`pnpm dev` / `pnpm start` 则先为 Electron 重建原生依赖。打包流程也会
-自行执行 Electron 重建，因此测试不会再静默使用仅适配 Electron 的二进制文件。
-
-### 构建可分发版本
-
-```bash
-pnpm build        # 构建各包，再把应用打包进 apps/desktop/out
-pnpm dist         # 为当前操作系统打包安装包到 apps/desktop/release
-pnpm dist:win     # Windows NSIS 安装包（.exe）
-pnpm dist:linux   # Linux x64 AppImage
-pnpm dist:mac     # macOS DMG：分别打 arm64 与 Intel x64（非 universal）
-pnpm dist:mac:arm64
-pnpm dist:mac:x64
-pnpm dist:dir     # 免安装目录（更快，便于本地测试）
+```powershell
+pnpm typecheck
+pnpm test
+pnpm smoke
+pnpm lint
 ```
 
-`pnpm dist` / `dist:win` / `dist:linux` / `dist:mac` 使用 `package.json` 与
-`apps/desktop/package.json` 里的版本号；发版前必须让它们与 tag 一致。推送 tag 前，
-请新增或更新 `docs/release-notes/vX.Y.Z.md`，GitHub Release 会直接使用该文件作为发版说明。
-如果用户可见行为发生变化，请在同一次改动里同步更新英文 README 和本中文版。
+构建 Windows 安装包：
 
-打包目标在 `apps/desktop/electron-builder.yml` 中配置（Windows 用 NSIS、macOS 用
-Intel/Apple Silicon 双架构 DMG、Linux 用 AppImage）。原生模块 `better-sqlite3`
-会保留在 asar 归档之外，以便运行时加载；非运行时源码和未使用的 Electron 语言资源会从
-安装包中排除。
-
-macOS CI 产物为**未签名、未公证**构建。用户侧请按上文
-[macOS 首次打开](#macos-首次打开未签名构建) 用 `xattr -cr` 去除隔离标记；
-「隐私与安全性 → 仍要打开」对 “is damaged” 类弹窗通常无效。
-
-### 发版流程
-
-仓库只保留一个 GitHub Actions workflow：`Build and Release CodePulse`。
-
-它会在推送 `v*` tag 或从 GitHub Actions 手动运行时触发。流程会**并行**构建
-Windows、Linux 与 macOS 安装包，并在各平台任务中执行 `typecheck` / `test` / `smoke` /
-`lint`，最后汇总上传 `.exe`、`.AppImage`、`.dmg`、blockmap 与发版说明，创建或更新
-GitHub Release。
-
-发版说明来自 `docs/release-notes/vX.Y.Z.md`。内容保持简短、面向用户：只写这版更新了什么，
-不要写内部实现流水账。
-
-发布一个版本：
-
-```bash
-pnpm typecheck && pnpm test && pnpm smoke && pnpm lint
-git tag vX.Y.Z
-git push origin main vX.Y.Z
+```powershell
+pnpm dist:win
 ```
 
-## 故障排查
+输出位于 `apps/desktop/release/`。推送 `v*` tag 后，GitHub Actions 会在 Windows runner 上重新验证、构建并发布安装包。
 
-<details>
-<summary><b>macOS 提示 “CodePulse is damaged and can’t be opened”</b></summary>
+## 项目来源
 
-安装包一般没有损坏。当前 mac 构建未签名，下载后的隔离标记会触发该文案。
-请按 [macOS 首次打开](#macos-首次打开未签名构建) 执行：
-
-```bash
-xattr -cr /Applications/CodePulse.app
-open /Applications/CodePulse.app
-```
-
-「系统设置 → 隐私与安全性 → 仍要打开」对这种弹窗通常无效。请确认下载的是
-与本机芯片匹配的 DMG（`mac-arm64` / `mac-x64`）。
-
-</details>
-
-<details>
-<summary><b>Dashboard 一直停在“正在等待事件”</b></summary>
-
-说明 agent 没有触达服务。请检查 CodePulse 正在运行、
-`curl http://127.0.0.1:17888/api/health` 返回 `{"ok":true}`，并且配置弹窗没有提示
-Claude / Codex / Grok / Kimi hook 缺失。Codex 如果提示需要信任，请运行一次 `/hooks` 并信任
-CodePulse hook。Grok 全局 hooks 写在 `~/.grok/hooks/codepulse.json`，无需项目级信任。
-
-</details>
-
-<details>
-<summary><b>控制台输出“SQLite unavailable — running without persistence”</b></summary>
-
-原生 `better-sqlite3` 的构建与运行时 ABI 不匹配。实时 Dashboard 仍可用，只是关闭了历史
-持久化。为 Electron 重新构建：
-
-```bash
-pnpm --filter @codepulse/desktop rebuild:electron
-```
-
-若要切回当前 Node.js 运行时，执行 `pnpm test` 即可；其 `pretest` 会自动完成正确的重建。
-
-</details>
-
-<details>
-<summary><b>端口 17888 已被占用</b></summary>
-
-另一个实例（或应用）占用了该端口。从托盘退出另一个实例，或改用其他端口并给 hook 设置
-对应的 `CODEPULSE_URL`。
-
-</details>
-
-<details>
-<summary><b>pnpm install 没有构建 better-sqlite3 / electron</b></summary>
-
-pnpm 10 默认会拦截依赖的构建脚本，除非加入允许清单。它们已列在根 `package.json` 的
-`pnpm.onlyBuiltDependencies` 下；重新运行 `pnpm install`，或执行 `pnpm rebuild`。
-
-</details>
-
-## 贡献
-
-欢迎提交 issue 与 pull request。提交前请确保：
-
-1. `pnpm typecheck && pnpm test && pnpm smoke` 全部通过。
-2. 用 `pnpm format` 格式化。
-3. 保持改动聚焦——一个 PR 只做一件事。
-
-产品背景请阅读 [`requirements.md`](./requirements.md)；其中 §8 的状态机迁移表是生命周期
-行为的权威依据。
+CodePulse HUD 基于并扩展自 [noeigenstate/CodePulse](https://github.com/noeigenstate/CodePulse)，保留了原项目的 MIT 许可证与 Git 历史。原项目提供了灵感和技术基底；本仓库的 HUD 版本、Windows 安装包与后续支持由本仓库独立维护，并非上游官方发布。
 
 ## 许可证
 
-基于 [MIT 许可证](./LICENSE) 发布 © 2026 CodePulse Contributors。
+[MIT](./LICENSE)

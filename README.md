@@ -1,568 +1,112 @@
 <div align="center">
 
-# CodePulse
+# CodePulse HUD
 
-**A local status hub for your AI coding agents.**
+**A local, always-visible status companion for AI coding agents.**
 
-Know at a glance whether Codex, Claude Code, Grok, and Kimi Code are working, waiting on
-you, finished, or stuck — without alt-tabbing back to a terminal.
+See whether Claude Code, Codex, Kimi Code, and Grok are working, waiting for you, finished, or blocked without repeatedly switching back to their terminals.
 
-[![Dashboard](https://img.shields.io/badge/Dashboard-v1.3.3-brightgreen)](https://github.com/noeigenstate/CodePulse/releases/tag/v1.3.3)
-[![HUD](https://img.shields.io/badge/HUD-v1.4.0--hud.6-orange)](https://github.com/noeigenstate/CodePulse/releases/tag/v1.4.0-hud.6)
-[![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)](#download)
-[![release](https://github.com/noeigenstate/CodePulse/actions/workflows/release.yml/badge.svg)](https://github.com/noeigenstate/CodePulse/actions/workflows/release.yml)
-[![node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](#development)
-[![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-F69220?logo=pnpm&logoColor=white)](#development)
-[![built with](https://img.shields.io/badge/built%20with-Electron%20%2B%20TypeScript-47848F?logo=electron&logoColor=white)](#how-it-works)
+[![release](https://img.shields.io/github/v/release/LBW-C137/CodePulse-HUD?label=release)](https://github.com/LBW-C137/CodePulse-HUD/releases/latest)
+[![platform](https://img.shields.io/badge/platform-Windows-blue)](#install)
+[![workflow](https://github.com/LBW-C137/CodePulse-HUD/actions/workflows/release.yml/badge.svg)](https://github.com/LBW-C137/CodePulse-HUD/actions/workflows/release.yml)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-[English](./README.md) · [简体中文](./README.zh-CN.md) · [Product spec](./requirements.md)
+[English](./README.md) · [简体中文](./README.zh-CN.md) · [HUD design notes](./docs/HUD.md)
 
 </div>
 
----
-
-AI coding agents are great at working unattended — and terrible at telling you
-when they need you. CodePulse listens to the lifecycle hooks that Codex, Claude
-Code, Grok, and Kimi Code expose, runs every event through a single state
-machine, and surfaces the result through a few focused interfaces:
-
-- 📊 **Live Dashboard** — adaptive panes for Claude Code / Codex / Grok / Kimi Code,
-  with brand colors, project cards, context bars, and quota meters.
-- 🪟 **Companion HUD** — an optional transparent, frameless, always-on-top form for
-  a secondary display. It keeps durable attention visible without stealing focus.
-- 📈 **Local analytics console** — open **Insights** (Chinese UI: **后台**) for
-  full-screen rollups of tokens, coding time, projects, model mix, and peak hours
-  from local SQLite history.
-- ⚙️ **Form-appropriate controls** — the Dashboard keeps its familiar theme and
-  panel controls; the HUD adds opacity and restrained attention-motion settings.
-- 💾 **One local core** — both real-time forms share the same hooks, state machine,
-  usage data, history, and local API.
-
-CodePulse is the product; the Live Dashboard and companion HUD are parallel
-presentation forms of it, not separate projects. **Insights** remains the shared
-historical view.
-
-Everything runs **100% locally**. The server binds to loopback only, prompts
-are stored as short previews (never in full), and the hooks fail silently when
-CodePulse isn't running — your agents are never blocked or slowed down.
-
-## Screenshots
-
-The Live Dashboard and companion HUD provide two ways to watch current work;
-the analytics console provides the shared historical view.
-
-### Live console
-
 <p align="center">
-  <img src="./docs/screenshots/dashboard.png" alt="CodePulse live console" width="920" />
+  <img src="./docs/screenshots/hud.png" alt="CodePulse HUD interface" width="560" />
 </p>
 
-Adaptive four-pane console: Claude and Kimi Code show **5h + weekly** quota
-meters; Codex and Grok show **weekly only**. Each project card surfaces the
-verified model, thinking depth, native elapsed time, context window, and state.
-Use the gear button to change theme or visible CLI panels; open **Insights** for
-local analytics.
-_(Sample data shown.)_
+CodePulse HUD is a transparent, frameless, always-on-top Windows app that stays visible without proactively stealing focus. It consumes native CLI hooks, highlights only the cards that need attention in orange, and keeps normal activity quiet.
 
-### Companion HUD
+## Highlights
 
-<p align="center">
-  <img src="./docs/screenshots/hud.png" alt="CodePulse companion HUD" width="560" />
-</p>
+- **Independent cards for every agent and project:** agents in the same workspace are grouped closely, while each card keeps its own status, timer, context, animation, and actions.
+- **Stable attention semantics:** permission/input waits, unread completions, and unread failures stay orange; ordinary work remains neutral.
+- **Different actions for different moments:** live waits use “Read,” while a genuinely finished turn uses “Done.”
+- **Temporary per-card dismissal:** the small `×` hides only that card, exactly like retention expiry. New real activity makes it eligible to appear again.
+- **Predictable retention:** idle, cancelled, and acknowledged result cards share the selected 10 / 30 / 60 / 120 / 240 minute retention setting.
+- **Context and quota summary:** shows available context usage and provider quota information for Claude, Codex, Kimi, and Grok.
+- **Built for a secondary display:** light, dark, and automatic themes; 20%–100% panel opacity; steady, breathe, or pulse attention effects; list and compact grid layouts.
+- **Low-I/O runtime:** restores local sessions once at startup, then relies primarily on hooks instead of continuously scanning the disk.
 
-The optional HUD keeps the same project state, context, and quota data in a
-compact secondary-display surface. Agents working in the same project remain
-independent cards inside a subtle shared outline; waiting reminders use
-**Read**, while completed turns use **Done**. A small **×** temporarily hides
-one card until new real activity makes it relevant again. See the
-[HUD companion concept](docs/CodePulse/HUD-companion-concept.md) for its design
-contract. _(Sample data shown.)_
+CodePulse HUD does not include the former analytics console and no longer maintains a SQLite activity history. It focuses on one question: **which AI coding task needs my attention right now?**
 
-### Local analytics console
+## Install
 
-<p align="center">
-  <img src="./docs/screenshots/stats.png" alt="CodePulse local analytics console" width="920" />
-</p>
+Only a Windows x64 installer is currently published.
 
-SQLite-backed rollups of tokens, coding time, project ranking, model mix, and
-peak hours — today / 7d / 30d with day / week / month trends. Local only,
-nothing is uploaded. _(Sample data shown.)_
+1. Quit the old CodePulse app from its tray if it is running. If you are moving to HUD permanently, uninstall the old app first.
+2. Download `CodePulse-HUD_<version>_x64-setup.exe` from the [latest release](https://github.com/LBW-C137/CodePulse-HUD/releases/latest).
+3. Run the installer and launch **CodePulse HUD**. The current installer is not commercially code-signed, so Windows SmartScreen may require “More info → Run anyway.”
+4. First launch checks and configures supported CLI hooks. Only CodePulse-managed entries are changed; unrelated hooks and preferences are preserved.
+5. Codex users must also enter `/hooks` in Codex, select the CodePulse hook, and trust the event permissions listed by the app.
 
-## Features
+The old CodePulse app and CodePulse HUD intentionally retain compatible hook identifiers and the same local port. **Do not run both applications at the same time.** Migrate in this order: quit/uninstall the old app, then install and launch HUD.
 
-|                                     |                                                                                                                                         |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 🚦 **Unified state machine**        | One turn lifecycle for every agent: idle → processing → tool running → waiting for permission/input → done / error / cancelled / stuck. |
-| 🧭 **Multi-agent, multi-workspace** | Concurrent Codex, Claude Code, Grok, and Kimi Code sessions stay separate, while project card order remains fixed across updates.       |
-| 🪟 **Adaptive Dashboard panes**     | Only CLIs with active tasks or retained quota appear — from one pane up to four panes.                                                  |
-| 🎨 **Automatic Dashboard theme**    | Automatic mode uses light from 08:00–20:00 and dark overnight; light and dark can also be selected manually.                            |
-| 🪟 **Companion HUD form**           | The HUD prerelease adds a transparent, frameless, always-on-top surface without replacing the full Dashboard form.                      |
-| 🎨 **HUD appearance**               | Set panel opacity, automatic/light/dark appearance, and a steady, breathing, or pulse attention effect.                                 |
-| ⚙️ **Configurable CLI panels**      | The gear menu lets you show or hide each CLI panel without stopping background sync or HUD state updates.                               |
-| 🧠 **Model, depth, and timing**     | Stable model identity, thinking depth when available, and native CLI elapsed time remain visible across refreshes.                      |
-| 📈 **Context tracking**             | Context usage grows monotonically; small readback drops are ignored while confirmed compression is handled correctly.                   |
-| 🎟️ **Quota awareness**              | Last known quota stays visible; increases update immediately, while repeated lower reads confirm an official reset.                     |
-| 🔔 **Dashboard notifications**      | The stable Dashboard form keeps completion and likely-stuck desktop notifications with short, privacy-conscious summaries.              |
-| 🟠 **Durable HUD attention**        | The HUD form keeps routine work neutral and reserves orange for unread completion, explicit action, and unread failure states.          |
-| 🕰️ **Stuck detection**              | A watchdog flags turns with no activity so silent failures don't burn your afternoon.                                                   |
-| 💾 **Local history**                | Events, sessions, turns, and token snapshots persisted to SQLite — yours to query or delete.                                            |
-| 📊 **Local analytics console**      | SQLite rollups of tokens, coding time, projects, and dialogs — today / 7d / 30d, with day / week / month trends.                        |
-| 🔌 **Open local API**               | Plain HTTP + WebSocket on `127.0.0.1:17888` for local integrations.                                                                     |
+## Supported CLIs
 
-## Local analytics console
+| CLI         | Status source                                        | First-use note                                                         |
+| ----------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| Claude Code | Native hooks, status line, and local session restore | Configuration is checked when HUD starts                               |
+| Codex CLI   | Native hooks and local session restore               | Trust the CodePulse hook manually in `/hooks`                          |
+| Kimi Code   | Native hooks, sessions, and local quota data         | Available quota is loaded when HUD starts; no conversation is required |
+| Grok        | Native hooks and local session restore               | Configuration is checked when HUD starts                               |
 
-The live dashboard answers “what is running now.” The **local analytics console**
-answers “how much did I spend over this period.”
+CLI hook events and local data formats can change between provider releases. If a state is missing, first confirm that the CLI is reasonably current, then open an issue in this repository.
 
-1. On the live console, click **Insights** in the top-right (Chinese UI label:
-   **后台**).
-2. A full-screen analytics view opens. Metrics are aggregated from the on-disk
-   `codepulse.sqlite` via in-app IPC — **nothing is uploaded**.
-3. Pick **Today / Last 7 days / Last 30 days**, then **Refresh** when you want a
-   fresh rollup of the latest events.
-4. Trend charts can switch **Day / Week / Month**. Press `Esc` or **Exit** to
-   return to the live console.
+## Card behavior
 
-What you get:
+| State                                   | HUD presentation      | Action                                                                   |
+| --------------------------------------- | --------------------- | ------------------------------------------------------------------------ |
+| Thinking or running tools               | Neutral card          | No action needed                                                         |
+| Waiting for permission or input         | Orange and persistent | “Read” acknowledges the alert; the runtime state still remains waiting   |
+| Completed                               | Orange and persistent | “Done” acknowledges the result; normal retention then applies            |
+| Error, possible stall, or usage limit   | Orange and persistent | “Read” acknowledges the alert; later runtime events continue updating it |
+| Idle, cancelled, or acknowledged result | Neutral card          | Hides after the selected retention period, or immediately with `×`       |
 
-| Section                   | What it shows                                                                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Overview KPIs**         | Total tokens, total / average daily coding time, project count, dialog count, with period-over-period deltas. |
-| **Trends**                | Token and coding-time curves so peak days stand out.                                                          |
-| **Model mix**             | Share of models in use (Claude / GPT / Gemini, etc.).                                                         |
-| **Peak hours**            | Weekday × hour heatmap of activity.                                                                           |
-| **Project ranking**       | Per-project tokens, duration, dialogs, and last activity.                                                     |
-| **Insights**              | Lightweight tips from local rollups (peak day, top model, efficiency hints).                                  |
-| **Distributions & score** | Project types, best-effort file types, tokens-per-dialog buckets, local efficiency score.                     |
+See [HUD design notes](./docs/HUD.md) for the complete behavior contract.
 
-> Charts fill in after CLI tasks have been recorded in the local database. A
-> fresh install or wiped history will show empty-state hints until you run turns.  
-> During active Grok turns, context usage is read from the session’s
-> `updates.jsonl`; after a turn ends, `signals.json` is preferred when present.
+## Local data and privacy
 
-## How it works
-
-```
- Codex / Claude Code / Grok / Kimi Code
-   │  lifecycle hooks & status line (dependency-free Node scripts)
-   ▼
- POST /api/events ──► adapters ──► StatusHub (pure reducer + rule engine)
- (Fastify, loopback)   normalize        │
-                                        ├─► SQLite (events / sessions / turns / tokens / workspaces)
-                                        ├─► tray / attention cue
-                                        ├─► desktop notification (Dashboard form)
-                                        └─► WebSocket / IPC push ──► Dashboard or companion HUD (React)
-                                                                  └─► Shared analytics (SQLite rollups)
-```
-
-The repository is a `pnpm` workspace:
-
-```
-apps/desktop/        Electron app (main / preload / renderer, incl. analytics UI)
-packages/
-  shared/            Domain types (Agent, Turn, AgentEvent, UsageStats, …) + constants
-  core/              State machine, rule engine, aggregation, StatusHub
-  adapters/          Codex / Claude / Grok / Kimi raw payload → AgentEvent mapping
-  storage/           SQLite schema (Drizzle ORM), repository, usage-stats queries
-  local-server/      Fastify HTTP + WebSocket routes
-  hooks/             Standalone hook scripts the agents invoke (incl. usage readers)
-scripts/             Backend smoke test
-tests/               Unit tests
-```
-
-**Stack:** Electron · electron-vite · TypeScript · React · Tailwind · Zustand ·
-Fastify · better-sqlite3 · Drizzle ORM.
-
-## Download
-
-Choose the presentation form that fits the screen where CodePulse will live:
-
-| Form           | Current release                                                                                | Best suited to                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Live Dashboard | [v1.3.3 stable](https://github.com/noeigenstate/CodePulse/releases/tag/v1.3.3)                 | A full-size, information-dense console with adaptive agent panes.           |
-| Companion HUD  | [v1.4.0-hud.6 prerelease](https://github.com/noeigenstate/CodePulse/releases/tag/v1.4.0-hud.6) | A persistent secondary-display surface with durable, low-interruption cues. |
-
-> HUD builds come from `hud-companion-concept` and use `v*-hud.*` prerelease
-> tags. Both forms currently share the same app identity, user data, hooks, and
-> ports. Choose one installed form at a time; install the HUD as an in-place
-> experimental switch rather than beside the stable Dashboard.
-
-Download installers from
-[GitHub Releases](https://github.com/noeigenstate/CodePulse/releases):
-
-- **Windows:** `CodePulse_*_x64-setup.exe`
-- **macOS Apple Silicon:** `CodePulse_*_mac-arm64.dmg` (M-series)
-- **macOS Intel:** `CodePulse_*_mac-x64.dmg`
-- **Linux x64:** `CodePulse_*_linux-x86_64.AppImage`
-
-On Linux, make the downloaded AppImage executable and run it:
-
-```bash
-chmod +x CodePulse_*_linux-x86_64.AppImage
-./CodePulse_*_linux-x86_64.AppImage
-```
-
-### macOS first open (unsigned builds)
-
-macOS builds on GitHub Releases are **not code-signed or notarized**. Browsers
-(e.g. Chrome) attach a quarantine flag after download. Double-clicking may show:
-
-> “CodePulse” is damaged and can’t be opened. You should move it to the Trash.
-
-The app is **usually not actually damaged** — Gatekeeper is blocking an unsigned,
-quarantined app. **System Settings → Privacy & Security → Open Anyway** often does
-**not** work for this _damaged_ dialog.
-
-**Recommended fix (Terminal):**
-
-1. Open the DMG and drag `CodePulse.app` into **Applications**.
-2. Run (adjust the path if you installed elsewhere):
-
-```bash
-xattr -cr /Applications/CodePulse.app
-open /Applications/CodePulse.app
-```
-
-If the app is still on the mounted DMG volume:
-
-```bash
-xattr -cr /Volumes/CodePulse*/CodePulse.app
-```
-
-3. Afterwards you can open it from Launchpad or Applications as usual.
-
-Use the DMG that matches your chip (`arm64` vs Intel); the wrong arch will not run.
-
-### macOS: CLIs not detected (Claude / Codex / Grok / Kimi)
-
-Apps opened from Finder / Launchpad do **not** load your shell `PATH` from
-`~/.zshrc`. CLIs installed via Homebrew or nvm may be missing from that minimal
-environment, so older builds could report “CLI not detected” even when Terminal
-works.
-
-Current builds probe common install locations automatically. If detection still
-fails, verify in Terminal:
-
-```bash
-which claude codex grok kimi
-claude --version
-codex --version
-grok --version
-kimi --version
-```
-
-Or point CodePulse at absolute paths and relaunch:
-
-```bash
-launchctl setenv CLAUDE_CLI_PATH "$(which claude)"
-launchctl setenv CODEX_CLI_PATH "$(which codex)"
-launchctl setenv GROK_CLI_PATH "$(which grok)"
-launchctl setenv KIMI_CLI_PATH "$(which kimi)"
-```
-
-(Or `export` those variables in a shell and run `open -a CodePulse`.)
-
-## First run
-
-1. Open CodePulse.
-2. CodePulse checks your local Claude Code, Codex, Grok, and Kimi Code CLI setup.
-3. If required entries are missing, CodePulse writes only its own hook and
-   status-line configuration to:
-   - `~/.claude/settings.json`
-   - `~/.codex/hooks.json`
-   - `~/.codex/config.toml`
-   - `~/.grok/hooks/codepulse.json` (global Grok hooks; trusted by default)
-   - `~/.kimi-code/config.toml` (managed Kimi hook block)
-4. If the setup dialog asks you to trust Codex hooks, open a Codex project
-   terminal, run `/hooks`, select the CodePulse hook, and trust:
-   - `SessionStart`
-   - `UserPromptSubmit`
-   - `PreToolUse`
-   - `PermissionRequest`
-   - `PostToolUse`
-   - `Stop`
-5. Run a Claude Code, Codex, Grok, or Kimi Code task. The installed real-time form
-   begins showing the matching project and usage data.
-6. In the Dashboard, use the gear button for theme and visible CLI panels. In the
-   HUD, it also controls panel opacity and orange attention motion.
-7. To review spend over time, open **Insights** in the top-right (see
-   [Local analytics console](#local-analytics-console)).
-
-CodePulse only manages CodePulse-owned hook and status-line entries. Existing
-user hooks, models, plugins, and preferences are preserved. On uninstall, the
-installer removes CodePulse-managed entries automatically.
-
-### Verify
-
-Run any task in Claude Code, Codex, Grok, or Kimi Code and watch the matching pane light
-up, or check the local API:
-
-```bash
-curl http://127.0.0.1:17888/api/health
-curl http://127.0.0.1:17888/api/status
-```
-
-## Dashboard tray and notifications
-
-The stable Dashboard form retains its familiar color-coded tray and selective
-desktop notifications:
-
-| Color     | Meaning                                     |
-| --------- | ------------------------------------------- |
-| ⚪ Grey   | All idle                                    |
-| 🔵 Blue   | A task is running                           |
-| 🟡 Yellow | Waiting for permission or input — needs you |
-| 🟢 Green  | A turn finished, unread                     |
-| 🔴 Red    | An error                                    |
-| 🟠 Orange | Suspected stuck                             |
-
-Dashboard notifications are throttled and deduplicated. Completion uses the
-project name and a short, cleaned prompt summary; mute silences notification
-sound for 30 minutes.
-
-## HUD attention language
-
-The five semantic levels do not introduce five colors. Typography and state text
-carry detail; only states that need the user turn orange.
-
-| Level    | Runtime meaning                                                | Visual treatment |
-| -------- | -------------------------------------------------------------- | ---------------- |
-| `quiet`  | Idle, cancelled, or an already acknowledged terminal state     | Neutral          |
-| `active` | Prompt submitted, thinking, or running a tool                  | Neutral          |
-| `notice` | A completed turn is unread                                     | Orange           |
-| `action` | An explicit permission or user-input request is waiting        | Orange           |
-| `fault`  | An unread error, timeout/stuck state, or usage-limit condition | Orange           |
-
-CodePulse does not emit native OS notifications or transient toasts in this HUD
-concept. An unread terminal state remains visible until you acknowledge it (or a
-new turn replaces it), so a secondary display can serve as the durable attention
-surface. The tray mirrors the same neutral/orange hierarchy.
-
-**Quiet mode** (tray or header button) lasts 30 minutes and makes animated orange
-attention steady; the state remains visible. Claude Code's routine "waiting for
-your input" idle reminder is ignored—`action` means CodePulse saw a real
-permission or explicit input request.
-
-## Local API
-
-Loopback-only (`127.0.0.1:17888`) — never exposed to the network. Point the
-hooks elsewhere with the `CODEPULSE_URL` environment variable.
-
-| Method | Path                 | Purpose                                                    |
-| ------ | -------------------- | ---------------------------------------------------------- |
-| `POST` | `/api/events`        | Ingest a raw hook payload (or an array, max 1000)          |
-| `GET`  | `/api/status`        | Full `StatusSnapshot` for the Dashboard                    |
-| `GET`  | `/api/device/status` | Minimal status for lightweight local clients               |
-| `GET`  | `/api/agents/detect` | Detect local Codex / Claude / Grok / Kimi CLI and hooks    |
-| `POST` | `/api/ack/:agent`    | Mark an agent's terminal result as read                    |
-| `POST` | `/api/mute`          | `{ "muted": true }` to enter quiet mode                    |
-| `GET`  | `/api/health`        | Liveness probe                                             |
-| `WS`   | `/ws`                | `status` plus legacy-named `notification` attention events |
-
-The WebSocket `notification` message name is retained for protocol compatibility;
-the desktop HUD does not turn it into a native OS toast. Quiet mode also clears
-the event's sound hint for clients that still consume that field.
-
-## LAN device API (opt-in)
-
-Read-only displays such as an ESP32 use a separate `0.0.0.0:17889` service. It is
-disabled by default, uses its own device token, and exposes no event-ingestion,
-acknowledgement, or mute endpoints, so the loopback API above remains private.
-When enabled, CodePulse keeps a stable pairing ID in
-`~/.codepulse/device-server-id` and publishes `_codepulse._tcp.local` with the
-protocol version, pairing ID, and status path.
-
-```bash
-CODEPULSE_DEVICE_SERVER_ENABLED=1 pnpm dev
-TOKEN="$(tr -d '\r\n' < ~/.codepulse/device-auth)"
-curl -H "X-CodePulse-Device-Token: $TOKEN" \
-  http://<desktop-lan-ip>:17889/api/v1/device/status
-```
-
-Open **Settings → E-paper display setup** to scan USB CDC ports and provision a
-CodePulse display over CP1. Serial enumeration, Wi-Fi provisioning, token access,
-and status polling all stay in the Electron main process. The UI reports success
-only after the firmware returns `ready`; it then verifies the matching
-`_codepulse-dsp._tcp.local` service against the display's anonymous port `17890`
-health response. Wi-Fi passwords and device tokens are never persisted or logged.
-
-The versioned response includes CLI state, project basename, raw token usage,
-context usage, five-hour/weekly quotas, and reset times. ETag/`304` support lets an
-e-paper client skip refreshes when display data is unchanged. See the
-[LAN device protocol v1](docs/device-api-v1.md) for setup, fields, and polling rules.
-
-## Data & privacy
-
-CodePulse stores a single SQLite database in the Electron user-data directory:
-
-| OS      | Path                                                       |
-| ------- | ---------------------------------------------------------- |
-| Windows | `%APPDATA%\CodePulse\codepulse.sqlite`                     |
-| macOS   | `~/Library/Application Support/CodePulse/codepulse.sqlite` |
-| Linux   | `~/.config/CodePulse/codepulse.sqlite`                     |
-
-It records events, sessions, turns, workspaces, and token snapshots. Raw events
-and token snapshots older than 30 days are pruned automatically. Prompts are
-stored only as short previews, never in full. Delete the file to reset all
-history.
-
-The **local analytics console** only reads this database on-device for rollups.
-Usage totals and project paths are never uploaded to a remote server.
-The LAN device server is disabled by default. When enabled, it reduces project
-identity to a basename instead of an absolute workspace path and requires a
-separate device token.
+- Task state is processed locally. There is no CodePulse account, telemetry, or analytics service.
+- The hook API binds only to `127.0.0.1:17888` and uses a local token stored at `~/.codepulse/local-auth`.
+- The app does not store full prompts or maintain a SQLite activity history. Settings, hook runtime files, and required credentials remain on the machine.
+- The app contacts GitHub to check for updates. Official provider endpoints or local credential flows may be used when reading account quotas.
+- Uninstall removes CodePulse-managed hook entries while preserving unrelated hooks, models, plugins, and preferences.
 
 ## Development
 
-Prerequisites:
+Requires Node.js 20+ and pnpm 9+:
 
-- **Node.js ≥ 20** (tested on 22.x)
-- **pnpm ≥ 9** — `npm i -g pnpm`
-
-```bash
+```powershell
 pnpm install
-pnpm dev          # app with hot reload (electron-vite)
-pnpm typecheck    # tsc across every package
-pnpm test         # unit tests
-pnpm smoke        # backend integration test (no Electron, no agent needed)
-pnpm lint         # prettier --check
-pnpm format       # prettier --write
-pnpm db:generate  # generate Drizzle SQL migrations from the schema
+pnpm dev
 ```
 
-Workspace packages are consumed from TypeScript **source** (each package's
-`exports` points at `src/index.ts`); electron-vite and esbuild bundle the
-source directly, so there is no per-package compile step during development.
+Run the local verification suite before committing:
 
-Native dependency ABIs are switched explicitly: `pnpm test` rebuilds
-`better-sqlite3` for the current Node.js runtime, while `pnpm dev` / `pnpm start`
-rebuild native dependencies for Electron first. Packaging performs its own
-Electron rebuild, so tests never silently run against an Electron-only binary.
-
-### Building a distributable
-
-```bash
-pnpm build        # build packages, then bundle the app into apps/desktop/out
-pnpm dist         # package an installer for the current OS into apps/desktop/release
-pnpm dist:win     # Windows NSIS installer (.exe)
-pnpm dist:linux   # Linux x64 AppImage
-pnpm dist:mac     # macOS DMGs: separate arm64 + Intel x64 (not universal)
-pnpm dist:mac:arm64
-pnpm dist:mac:x64
-pnpm dist:dir     # unpacked build (faster, for local testing)
+```powershell
+pnpm typecheck
+pnpm test
+pnpm smoke
+pnpm lint
 ```
 
-`pnpm dist` / `dist:win` / `dist:linux` / `dist:mac` use the versions in `package.json` and
-`apps/desktop/package.json`. Keep them aligned with the release tag. Before
-publishing a tag, add or update `docs/release-notes/vX.Y.Z.md`; GitHub Releases
-will use that file as the release body. If user-facing behavior changes, update
-this README and `README.zh-CN.md` in the same change.
+Build the Windows installer:
 
-Targets are configured in `apps/desktop/electron-builder.yml` (NSIS on
-Windows, DMG on macOS for both Intel and Apple Silicon, AppImage on Linux).
-The native `better-sqlite3` addon is unpacked so it loads at runtime; non-runtime
-sources and unused Electron locales are excluded from the installer.
-
-macOS CI builds are **unsigned and not notarized**. End users should follow
-[macOS first open](#macos-first-open-unsigned-builds) and clear quarantine with
-`xattr -cr`. Privacy & Security → “Open Anyway” usually does not help for the
-“is damaged” dialog.
-
-### Release workflow
-
-The repository has one GitHub Actions workflow: `Build and Release CodePulse`.
-
-It runs when you push a `v*` tag or start it manually from GitHub Actions. The
-workflow builds **Windows**, **Linux**, and **macOS** installers in parallel, runs
-`typecheck` / `test` / `smoke` / `lint` on each platform job, then publishes a
-single GitHub Release with `.exe`, `.AppImage`, `.dmg`, blockmaps, and release notes.
-
-Release notes come from `docs/release-notes/vX.Y.Z.md`. Keep them short and
-user-facing: list what changed, not the internal implementation log.
-
-To publish a version:
-
-```bash
-pnpm typecheck && pnpm test && pnpm smoke && pnpm lint
-git tag vX.Y.Z
-git push origin main vX.Y.Z
+```powershell
+pnpm dist:win
 ```
 
-## Troubleshooting
+Artifacts are written to `apps/desktop/release/`. Pushing a `v*` tag makes GitHub Actions verify the repository again on Windows, build the installer, and publish a release.
 
-<details>
-<summary><b>macOS says “CodePulse is damaged and can’t be opened”</b></summary>
+## Origin
 
-The package is usually fine. Unsigned builds get a quarantine flag after download,
-and Gatekeeper shows a _damaged_ message. Follow
-[macOS first open](#macos-first-open-unsigned-builds):
-
-```bash
-xattr -cr /Applications/CodePulse.app
-open /Applications/CodePulse.app
-```
-
-Privacy & Security → Open Anyway usually does **not** work for this dialog. Also
-confirm you downloaded the DMG that matches your chip (`mac-arm64` vs `mac-x64`).
-
-</details>
-
-<details>
-<summary><b>The Dashboard never leaves "waiting for events"</b></summary>
-
-The agent isn't reaching the server. Check that CodePulse is running, that
-`curl http://127.0.0.1:17888/api/health` returns `{"ok":true}`, and that the
-setup dialog does not report missing Claude / Codex / Grok / Kimi hooks. For Codex, run
-`/hooks` once and trust the CodePulse hook if prompted. Grok global hooks live in
-`~/.grok/hooks/codepulse.json` and do not need project trust.
-
-</details>
-
-<details>
-<summary><b>Console logs "SQLite unavailable — running without persistence"</b></summary>
-
-The native `better-sqlite3` build doesn't match your runtime's ABI. The live
-Dashboard still works; only history persistence is off. Rebuild for Electron:
-
-```bash
-pnpm --filter @codepulse/desktop rebuild:electron
-```
-
-To switch the native module back to the current Node.js runtime, run `pnpm test`;
-its `pretest` step performs the correct rebuild automatically.
-
-</details>
-
-<details>
-<summary><b>Port 17888 is already in use</b></summary>
-
-Another instance (or app) holds the port. Quit the other instance from the
-tray, or change the port and set `CODEPULSE_URL` for the hooks to match.
-
-</details>
-
-<details>
-<summary><b>pnpm install didn't build better-sqlite3 / electron</b></summary>
-
-pnpm 10 blocks dependency build scripts unless allow-listed. They are listed
-under `pnpm.onlyBuiltDependencies` in the root `package.json`; run
-`pnpm install` again, or `pnpm rebuild`.
-
-</details>
-
-## Contributing
-
-Issues and pull requests are welcome. Before submitting:
-
-1. `pnpm typecheck && pnpm test && pnpm smoke` must pass.
-2. Format with `pnpm format`.
-3. Keep changes focused — one concern per PR.
-
-For product context, read [`requirements.md`](./requirements.md); the
-state-machine transition table in §8 is the source of truth for lifecycle
-behavior.
+CodePulse HUD is derived from and extends [noeigenstate/CodePulse](https://github.com/noeigenstate/CodePulse), retaining its MIT license and Git history. The original project supplied the inspiration and technical base; HUD releases, Windows installers, and support in this repository are independently maintained and are not official upstream releases.
 
 ## License
 
-Released under the [MIT License](./LICENSE) © 2026 CodePulse Contributors.
+[MIT](./LICENSE)

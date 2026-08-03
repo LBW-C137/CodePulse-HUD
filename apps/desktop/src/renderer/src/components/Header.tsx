@@ -6,19 +6,17 @@ interface Props {
   muted: boolean
   onToggleLocale: () => void
   onToggleMute: () => void
-  onOpenStats: () => void
   onOpenSettings: () => void
   /** Drives only the gear button's active visual state while the dialog is mounted. */
   settingsOpen?: boolean
 }
 
-/** Renders global dashboard controls, including the settings trigger beside insights. */
+/** Renders the conventional settings-window header and its global controls. */
 export function Header({
   locale,
   muted,
   onToggleLocale,
   onToggleMute,
-  onOpenStats,
   onOpenSettings,
   settingsOpen = false,
 }: Props): JSX.Element {
@@ -35,7 +33,7 @@ export function Header({
           />
           <div className="min-w-0">
             <div className="flex min-w-0 items-baseline gap-2">
-              <h1 className="truncate text-title tracking-tight text-ink">CodePulse</h1>
+              <h1 className="truncate text-title tracking-tight text-ink">CodePulse HUD</h1>
               {copy.brandTag ? (
                 <span className="text-meta font-semibold text-brand-claude">{copy.brandTag}</span>
               ) : null}
@@ -62,10 +60,6 @@ export function Header({
           >
             {muted ? <BellOffIcon /> : <BellIcon />}
             <span>{muted ? copy.muted : copy.mute}</span>
-          </button>
-          <button type="button" onClick={onOpenStats} className="control-btn" title={copy.stats}>
-            <ChartIcon />
-            <span>{copy.stats}</span>
           </button>
           <button
             aria-label={copy.settings}
@@ -110,17 +104,6 @@ function BellOffIcon(): JSX.Element {
       <path
         fill="currentColor"
         d="M3.3 2.2a.75.75 0 00-1.1 1L4.5 5.5A5 5 0 005 7v2.2c0 .5-.2 1-.5 1.4L3.3 12.5A1 1 0 004.1 14h9.3l2.3 2.3a.75.75 0 001.1-1L3.3 2.2zM15 10.6l1.2 1.9H15.5L15 10.6zM10 2a5 5 0 014.7 3.3l-1.3 1.3A3.5 3.5 0 0010 3.5V2zm0 14a2 2 0 01-1.7-1h3.4A2 2 0 0110 16z"
-      />
-    </svg>
-  )
-}
-
-function ChartIcon(): JSX.Element {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M3 3a1 1 0 011-1h1a1 1 0 011 1v14H4a1 1 0 01-1-1V3zm5 6a1 1 0 011-1h1a1 1 0 011 1v8H8V9zm5-4a1 1 0 011-1h1a1 1 0 011 1v12h-3V5z"
       />
     </svg>
   )

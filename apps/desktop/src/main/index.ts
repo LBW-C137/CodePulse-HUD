@@ -14,16 +14,8 @@ import {
   type UpdateDownloadProgress,
   type UpdateInfo,
   type UpdateInstallResult,
-  type UsageStatsQuery,
 } from '@codepulse/shared'
 import { StatusHub } from '@codepulse/core'
-import {
-  openDb,
-  persistEvent,
-  pruneEventsBefore,
-  queryUsageStats,
-  type DB,
-} from '@codepulse/storage'
 import {
   cleanupAgents,
   configureAgents,
@@ -71,8 +63,6 @@ import {
 
 const MUTE_DURATION_MS = 30 * 60_000
 const DISABLE_UPDATE_CHECK_ENV = 'CODEPULSE_DISABLE_UPDATE_CHECKS'
-const EVENT_RETENTION_MS = 30 * 24 * 60 * 60_000
-const EVENT_PRUNE_INTERVAL_MS = 24 * 60 * 60_000
 /** Merges tray, focus, and renderer bootstrap refresh requests into one short batch. */
 const FOCUS_SYNC_DEBOUNCE_MS = 180
 
@@ -85,14 +75,8 @@ let deviceUsb: DeviceUsbManager | null = null
 let displayBrowser: DisplayDeviceBrowser | null = null
 /** 本地 HTTP 服务是否已成功监听（失败时禁止配置 Hook，避免打到其它进程）。 */
 let localServerReady = false
-let db: DB | null = null
-/** 本机 SQLite 路径；统计后台只读此库（与实时 StatusHub 内存态分离）。 */
-let dbPath: string | null = null
-/** openDb 失败时的原因，用于统计页诊断。 */
-let dbOpenError: string | undefined
 let muteTimer: NodeJS.Timeout | null = null
 let updateTimer: NodeJS.Timeout | null = null
-let pruneTimer: NodeJS.Timeout | null = null
 let latestUpdate: UpdateInfo | null = null
 let checkingUpdate = false
 let shutdownStarted = false
@@ -152,19 +136,6 @@ function showWindow(): void {
   void refreshLocalAgents()
 }
 
-/** Opens a low-frequency HUD surface from the tray without adding HUD buttons. */
-function showRendererSurface(channel: 'codepulse:open-stats'): void {
-  showWindow()
-  const target = mainWindow
-  if (!target || target.isDestroyed()) return
-
-  const send = (): void => {
-    if (!target.isDestroyed()) target.webContents.send(channel)
-  }
-  if (target.webContents.isLoadingMainFrame()) target.webContents.once('did-finish-load', send)
-  else send()
-}
-
 /** Opens settings in a conventional independent window, never over the transparent HUD. */
 function showSettingsWindow(): void {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -181,7 +152,7 @@ function showSettingsWindow(): void {
     minWidth: 560,
     minHeight: 560,
     show: false,
-    title: 'CodePulse 设置',
+    title: 'CodePulse HUD 设置',
     icon: appIconPath(),
     autoHideMenuBar: true,
     backgroundColor: palette.backgroundColor,
@@ -240,7 +211,7 @@ function createWindow(): void {
     show: false,
     ...HUD_WINDOW_SHELL_OPTIONS,
     autoHideMenuBar: true,
-    title: 'CodePulse',
+    title: 'CodePulse HUD',
     icon: appIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -294,18 +265,6 @@ let pendingStatusSnapshot: StatusSnapshot | null = null
 let statusFlushTimer: NodeJS.Timeout | null = null
 
 function wireHub(): void {
-  hub.on('event', (event) => {
-    if (!db) return
-    // Skip pure internal quota/session-sync noise from stats DB (keeps dashboard
-    // correct; tool storms still persist lifecycle events for analytics).
-    if (event.internal?.quotaRefresh || event.internal?.sessionSync) return
-    try {
-      persistEvent(db, event)
-    } catch (err) {
-      console.error('[codepulse] failed to persist event', err)
-    }
-  })
-
   hub.on('status', (snapshot: StatusSnapshot) => {
     pendingStatusSnapshot = snapshot
     if (statusFlushTimer) return
@@ -406,12 +365,6 @@ function registerIpc(): void {
     return true
   })
   ipcMain.handle('codepulse:install-update', () => installLatestUpdate())
-  ipcMain.handle('codepulse:get-stats', (_event, query?: UsageStatsQuery) =>
-    queryUsageStats(db, query ?? {}, Date.now(), {
-      dbPath: dbPath ?? undefined,
-      openError: dbOpenError,
-    }),
-  )
   /** 渲染进程主动触发本机 CLI 会话扫盘（不依赖 hook / 用户发消息）。 */
   ipcMain.handle('codepulse:sync-sessions', async () => {
     await focusSync.schedule()
@@ -506,20 +459,6 @@ function registerIpc(): void {
 async function bootstrap(): Promise<void> {
   Menu.setApplicationMenu(null)
 
-  dbPath = join(app.getPath('userData'), 'codepulse.sqlite')
-  try {
-    db = openDb(dbPath).db
-    dbOpenError = undefined
-    console.log(`[codepulse] SQLite ready at ${dbPath}`)
-  } catch (err) {
-    db = null
-    dbOpenError = err instanceof Error ? err.message : String(err)
-    console.error('[codepulse] SQLite unavailable - running without persistence', err)
-    console.error(
-      '[codepulse] Live dashboard still works; local analytics will stay empty until SQLite loads.',
-    )
-  }
-
   wireHub()
   registerIpc()
 
@@ -593,7 +532,6 @@ async function bootstrap(): Promise<void> {
   tray = new TrayController({
     onOpen: showWindow,
     onOpenSettings: showSettingsWindow,
-    onOpenStats: () => showRendererSurface('codepulse:open-stats'),
     onToggleMute: setMuted,
     onQuit: () => {
       app.quit()
@@ -684,12 +622,6 @@ function safeErrorMessage(error: unknown): string {
 }
 
 function startMaintenanceTimers(): void {
-  prunePersistedEvents()
-
-  if (pruneTimer) clearInterval(pruneTimer)
-  pruneTimer = setInterval(prunePersistedEvents, EVENT_PRUNE_INTERVAL_MS)
-  pruneTimer.unref?.()
-
   if (updateTimer) clearInterval(updateTimer)
   updateTimer = setInterval(() => {
     void checkForUpdatesOnce()
@@ -723,19 +655,8 @@ async function shutdownRuntime(): Promise<void> {
 }
 
 function stopMaintenanceTimers(): void {
-  if (pruneTimer) clearInterval(pruneTimer)
   if (updateTimer) clearInterval(updateTimer)
-  pruneTimer = null
   updateTimer = null
-}
-
-function prunePersistedEvents(): void {
-  if (!db) return
-  try {
-    pruneEventsBefore(db, Date.now() - EVENT_RETENTION_MS)
-  } catch (err) {
-    console.error('[codepulse] failed to prune old events', err)
-  }
 }
 
 function updateTrayIfChanged(snapshot: StatusSnapshot): void {
@@ -825,7 +746,7 @@ async function installLatestUpdate(): Promise<UpdateInstallResult> {
 
     const installerPath = await downloadInstaller(
       update,
-      join(app.getPath('temp'), 'CodePulse', 'updates', update.tag),
+      join(app.getPath('temp'), 'CodePulse HUD', 'updates', update.tag),
       (progress) =>
         broadcastUpdateProgress({
           phase: progress.phase ?? 'downloading',
@@ -974,9 +895,9 @@ async function refreshLocalAgents(): Promise<Agent[]> {
   return agents
 }
 
-app.setName('CodePulse')
+app.setName('CodePulse HUD')
 if (process.platform === 'win32') {
-  app.setAppUserModelId('CodePulse')
+  app.setAppUserModelId('io.github.lbwc137.codepulsehud')
 }
 
 const cleanupMode = process.argv.includes('--cleanup-config')

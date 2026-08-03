@@ -92,7 +92,7 @@ export function ProjectDeck({
   return (
     <div className="project-deck-shell min-h-0 flex-1" ref={shellRef}>
       <header className="project-deck-header">
-        <div className="project-deck-brand" aria-label="CodePulse">
+        <div className="project-deck-brand" aria-label="CodePulse HUD">
           <span className="project-deck-signal" aria-hidden="true" />
           <span>CODEPULSE</span>
         </div>

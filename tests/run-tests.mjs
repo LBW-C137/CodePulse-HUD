@@ -36,7 +36,6 @@ if (tsTestFiles.length > 0) {
     external: [
       'fastify',
       '@fastify/websocket',
-      'better-sqlite3',
       'bonjour-service',
       'serialport',
       'ws',
@@ -46,7 +45,6 @@ if (tsTestFiles.length > 0) {
       '@codepulse/core': './packages/core/src/index.ts',
       '@codepulse/adapters': './packages/adapters/src/index.ts',
       '@codepulse/local-server': './packages/local-server/src/index.ts',
-      '@codepulse/storage': './packages/storage/src/index.ts',
     },
   })
 }

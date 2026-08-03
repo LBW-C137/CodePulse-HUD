@@ -1,4 +1,4 @@
-name: Build and Release CodePulse
+name: Build and Release CodePulse HUD
 
 on:
   push:
@@ -19,7 +19,6 @@ jobs:
     name: Prepare release metadata
     runs-on: ubuntu-latest
     outputs:
-      package_version: ${{ steps.release.outputs.package_version }}
       version: ${{ steps.release.outputs.version }}
       tag: ${{ steps.release.outputs.tag }}
       release_name: ${{ steps.release.outputs.release_name }}
@@ -51,10 +50,9 @@ jobs:
             prerelease=true
           fi
           {
-            echo "package_version=${package_version}"
             echo "version=${version}"
             echo "tag=${tag}"
-            echo "release_name=CodePulse ${tag}"
+            echo "release_name=CodePulse HUD ${tag}"
             echo "prerelease=${prerelease}"
           } >> "$GITHUB_OUTPUT"
 
@@ -76,22 +74,15 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           node scripts/write-release-notes.mjs
-          # Keep a stable path for artifact upload (script writes under RUNNER_TEMP).
           cp "${RUNNER_TEMP}/codepulse-release-notes.md" ./codepulse-release-notes.md
 
-      - name: Upload release notes
+      - name: Upload release metadata
         uses: actions/upload-artifact@v4
         with:
-          name: codepulse-release-notes-${{ steps.release.outputs.tag }}
-          if-no-files-found: error
-          path: codepulse-release-notes.md
-
-      - name: Upload versioned package manifests
-        uses: actions/upload-artifact@v4
-        with:
-          name: codepulse-versioned-manifests-${{ steps.release.outputs.tag }}
+          name: codepulse-hud-release-metadata-${{ steps.release.outputs.tag }}
           if-no-files-found: error
           path: |
+            codepulse-release-notes.md
             package.json
             apps/desktop/package.json
 
@@ -103,31 +94,25 @@ jobs:
       fail-fast: false
       matrix:
         node: [20, 22]
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           run_install: false
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
-
-      - name: Restore versioned package manifests
+      - name: Restore release metadata
         uses: actions/download-artifact@v4
         with:
-          name: codepulse-versioned-manifests-${{ needs.prepare.outputs.tag }}
+          name: codepulse-hud-release-metadata-${{ needs.prepare.outputs.tag }}
           path: .
-
-      - name: Install dependencies for Node tests
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Verify
         run: |
           pnpm typecheck
@@ -139,227 +124,73 @@ jobs:
     name: Build Windows installer
     needs: [prepare, verify]
     runs-on: windows-latest
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           run_install: false
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
-      - name: Restore versioned package manifests
+      - name: Restore release metadata
         uses: actions/download-artifact@v4
         with:
-          name: codepulse-versioned-manifests-${{ needs.prepare.outputs.tag }}
+          name: codepulse-hud-release-metadata-${{ needs.prepare.outputs.tag }}
           path: .
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Clean release output
         shell: pwsh
         run: Remove-Item -Path 'apps/desktop/release' -Recurse -Force -ErrorAction SilentlyContinue
-
       - name: Build Windows installer
         run: pnpm dist:win
-
-      - name: Upload Windows installer artifact
+      - name: Verify Windows installer
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          $installer = "apps/desktop/release/CodePulse-HUD_${env:RELEASE_VERSION}_x64-setup.exe"
+          if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
+            throw "Missing Windows installer: $installer"
+          }
+          $size = (Get-Item -LiteralPath $installer).Length
+          if ($size -lt 1MB) {
+            throw "Windows installer is unexpectedly small: $size bytes"
+          }
+          Write-Host "OK Windows installer: $installer ($size bytes)"
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: codepulse-windows-${{ needs.prepare.outputs.tag }}
+          name: codepulse-hud-windows-${{ needs.prepare.outputs.tag }}
           if-no-files-found: error
           path: |
-            apps/desktop/release/*.exe
+            apps/desktop/release/CodePulse-HUD_*.exe
             apps/desktop/release/*.blockmap
             apps/desktop/release/latest.yml
 
-  linux:
-    name: Build Linux AppImage
-    needs: [prepare, verify]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Restore versioned package manifests
-        uses: actions/download-artifact@v4
-        with:
-          name: codepulse-versioned-manifests-${{ needs.prepare.outputs.tag }}
-          path: .
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Clean release output
-        run: rm -rf apps/desktop/release
-
-      - name: Build Linux x64 AppImage
-        run: pnpm dist:linux
-
-      - name: Verify Linux AppImage exists and is executable
-        env:
-          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          set -euo pipefail
-          appimage="apps/desktop/release/CodePulse_${RELEASE_VERSION}_linux-x86_64.AppImage"
-
-          echo "Release directory contents:"
-          ls -lah apps/desktop/release
-
-          if [ ! -f "${appimage}" ]; then
-            echo "Missing Linux AppImage: ${appimage}"
-            exit 1
-          fi
-          if [ ! -x "${appimage}" ]; then
-            echo "Linux AppImage is not executable: ${appimage}"
-            exit 1
-          fi
-
-          "${appimage}" --appimage-version
-          echo "OK Linux AppImage: ${appimage} ($(wc -c < "${appimage}") bytes)"
-
-      - name: Upload Linux AppImage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: codepulse-linux-${{ needs.prepare.outputs.tag }}
-          if-no-files-found: error
-          path: apps/desktop/release/*.AppImage
-
-  macos:
-    name: Build macOS installer
-    needs: [prepare, verify]
-    runs-on: macos-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Restore versioned package manifests
-        uses: actions/download-artifact@v4
-        with:
-          name: codepulse-versioned-manifests-${{ needs.prepare.outputs.tag }}
-          path: .
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Clean release output
-        run: rm -rf apps/desktop/release
-
-      - name: Build macOS installers (arm64 + Intel x64)
-        env:
-          # Unsigned CI builds; users can still open the app via System Settings.
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        # Explicit dual-arch flags produce two separate apps/DMGs (not universal).
-        run: pnpm dist:mac
-
-      - name: Verify both CPU architecture DMGs exist
-        env:
-          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          set -euo pipefail
-          release_dir="apps/desktop/release"
-          arm64_dmg="${release_dir}/CodePulse_${RELEASE_VERSION}_mac-arm64.dmg"
-          x64_dmg="${release_dir}/CodePulse_${RELEASE_VERSION}_mac-x64.dmg"
-
-          echo "Release directory contents:"
-          ls -lah "${release_dir}"
-
-          if [ ! -f "${arm64_dmg}" ]; then
-            echo "Missing Apple Silicon installer: ${arm64_dmg}"
-            exit 1
-          fi
-          if [ ! -f "${x64_dmg}" ]; then
-            echo "Missing Intel installer: ${x64_dmg}"
-            exit 1
-          fi
-
-          echo "OK arm64 DMG: ${arm64_dmg} ($(wc -c < "${arm64_dmg}") bytes)"
-          echo "OK x64 DMG:   ${x64_dmg} ($(wc -c < "${x64_dmg}") bytes)"
-
-      - name: Upload macOS installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: codepulse-macos-${{ needs.prepare.outputs.tag }}
-          if-no-files-found: error
-          path: |
-            apps/desktop/release/*_mac-arm64.dmg
-            apps/desktop/release/*_mac-x64.dmg
-            apps/desktop/release/*.blockmap
-            apps/desktop/release/latest-mac.yml
-
   publish:
     name: Publish GitHub release
-    needs: [prepare, windows, linux, macos]
+    needs: [prepare, windows]
     if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Download Windows artifacts
+      - name: Download release metadata
         uses: actions/download-artifact@v4
         with:
-          name: codepulse-windows-${{ needs.prepare.outputs.tag }}
+          name: codepulse-hud-release-metadata-${{ needs.prepare.outputs.tag }}
+          path: release-assets/metadata
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: codepulse-hud-windows-${{ needs.prepare.outputs.tag }}
           path: release-assets/windows
-
-      - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: codepulse-macos-${{ needs.prepare.outputs.tag }}
-          path: release-assets/macos
-
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: codepulse-linux-${{ needs.prepare.outputs.tag }}
-          path: release-assets/linux
-
-      - name: Download release notes
-        uses: actions/download-artifact@v4
-        with:
-          name: codepulse-release-notes-${{ needs.prepare.outputs.tag }}
-          path: release-assets/notes
-
-      - name: Create or update GitHub release
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
@@ -367,62 +198,20 @@ jobs:
           RELEASE_PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
           set -euo pipefail
-          notes_file="$(find release-assets/notes -type f -name 'codepulse-release-notes.md' | head -n 1)"
-          if [ -z "${notes_file}" ]; then
-            echo "Release notes file not found."
-            exit 1
-          fi
-
+          notes_file="release-assets/metadata/codepulse-release-notes.md"
           mapfile -t assets < <(
-            find release-assets/windows release-assets/macos release-assets/linux -type f \( \
-              -name '*.exe' -o \
-              -name '*.dmg' -o \
-              -name '*.AppImage' -o \
-              -name '*.zip' -o \
-              -name '*.blockmap' -o \
-              -name 'latest.yml' -o \
-              -name 'latest-mac.yml' \
-            \) | sort
+            find release-assets/windows -type f \( -name '*.exe' -o -name '*.blockmap' -o -name 'latest.yml' \) | sort
           )
 
-          if [ "${#assets[@]}" -eq 0 ]; then
-            echo "No release assets found."
-            exit 1
-          fi
-
-          echo "Publishing ${#assets[@]} asset(s) for ${RELEASE_TAG}"
-          printf ' - %s\n' "${assets[@]}"
-
-          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            if [ "${RELEASE_PRERELEASE}" = "true" ]; then
-              gh release edit "${RELEASE_TAG}" \
-                --repo "${GITHUB_REPOSITORY}" \
-                --title "${RELEASE_NAME}" \
-                --notes-file "${notes_file}" \
-                --prerelease
-            else
-              gh release edit "${RELEASE_TAG}" \
-                --repo "${GITHUB_REPOSITORY}" \
-                --title "${RELEASE_NAME}" \
-                --notes-file "${notes_file}" \
-                --latest
-            fi
-            gh release upload "${RELEASE_TAG}" "${assets[@]}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --clobber
+          args=(
+            release create "${RELEASE_TAG}" "${assets[@]}"
+            --repo "${GITHUB_REPOSITORY}"
+            --title "${RELEASE_NAME}"
+            --notes-file "${notes_file}"
+          )
+          if [ "${RELEASE_PRERELEASE}" = "true" ]; then
+            args+=(--prerelease --latest=false)
           else
-            if [ "${RELEASE_PRERELEASE}" = "true" ]; then
-              gh release create "${RELEASE_TAG}" "${assets[@]}" \
-                --repo "${GITHUB_REPOSITORY}" \
-                --title "${RELEASE_NAME}" \
-                --notes-file "${notes_file}" \
-                --prerelease \
-                --latest=false
-            else
-              gh release create "${RELEASE_TAG}" "${assets[@]}" \
-                --repo "${GITHUB_REPOSITORY}" \
-                --title "${RELEASE_NAME}" \
-                --notes-file "${notes_file}" \
-                --latest
-            fi
+            args+=(--latest)
           fi
+          gh "${args[@]}"

@@ -9,11 +9,12 @@ build/
 release/
 apps/desktop/out/
 apps/desktop/release/
+apps/desktop/release-verify/
 !apps/desktop/build/
 !apps/desktop/build/icon.png
 *.tsbuildinfo
 
-# local data / db
+# local runtime data
 *.sqlite
 *.sqlite-journal
 *.db
@@ -41,4 +42,3 @@ Thumbs.db
 # env
 .env
 .env.local
-requirements.md

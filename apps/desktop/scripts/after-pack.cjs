@@ -1,5 +1,5 @@
 /**
- * Strip optional Electron binaries this dashboard does not need.
+ * Strip optional Electron binaries this Windows HUD does not need.
  *
  * IMPORTANT: Do NOT remove ffmpeg — Electron/Chromium links against it at
  * process start on Windows (missing ffmpeg.dll = hard launch failure).
@@ -11,34 +11,7 @@ exports.default = async function afterPack(context) {
   const path = require('node:path')
 
   const appOutDir = context.appOutDir
-  const platform = context.electronPlatformName
-
-  /** @type {string[]} */
-  const candidates = []
-
-  if (platform === 'win32') {
-    // Software Vulkan fallback only — ffmpeg.dll must stay.
-    candidates.push('vk_swiftshader.dll', 'vk_swiftshader_icd.json', 'vulkan-1.dll')
-  } else if (platform === 'darwin') {
-    // Frameworks live under CodePulse.app/Contents/Frameworks/Electron Framework.framework/...
-    const framework = path.join(
-      appOutDir,
-      'CodePulse.app',
-      'Contents',
-      'Frameworks',
-      'Electron Framework.framework',
-      'Versions',
-      'A',
-      'Libraries',
-    )
-    // Keep libffmpeg.dylib; only drop soft-Vulkan extras when present.
-    candidates.push(
-      path.join(framework, 'libvk_swiftshader.dylib'),
-      path.join(framework, 'vk_swiftshader_icd.json'),
-    )
-  } else if (platform === 'linux') {
-    candidates.push('libvk_swiftshader.so', 'vk_swiftshader_icd.json')
-  }
+  const candidates = ['vk_swiftshader.dll', 'vk_swiftshader_icd.json', 'vulkan-1.dll']
 
   let removedBytes = 0
   for (const rel of candidates) {

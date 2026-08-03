@@ -12,7 +12,6 @@ import { trayAgentNameFor } from './tray-icon-png.js'
 export interface TrayCallbacks {
   onOpen: () => void
   onOpenSettings: () => void
-  onOpenStats: () => void
   onToggleMute: (muted: boolean) => void
   onQuit: () => void
 }
@@ -24,7 +23,7 @@ export class TrayController {
 
   constructor(private callbacks: TrayCallbacks) {
     this.tray = new Tray(trayIconFor('idle'))
-    this.tray.setToolTip('CodePulse')
+    this.tray.setToolTip('CodePulse HUD')
     this.tray.on('click', () => this.callbacks.onOpen())
     this.update(this.snapshot)
   }
@@ -33,7 +32,7 @@ export class TrayController {
     this.snapshot = snapshot
     const hudOverall = deriveHudOverall(snapshot)
     this.tray.setImage(trayIconFor(hudOverall))
-    this.tray.setToolTip(`CodePulse - ${overallLabel(hudOverall)}`)
+    this.tray.setToolTip(`CodePulse HUD - ${overallLabel(hudOverall)}`)
     this.tray.setContextMenu(this.buildMenu(snapshot))
   }
 
@@ -54,13 +53,12 @@ export class TrayController {
         : [{ label: '暂无活动 Agent', enabled: false }]
 
     return Menu.buildFromTemplate([
-      { label: 'CodePulse', enabled: false },
+      { label: 'CodePulse HUD', enabled: false },
       { type: 'separator' },
       ...agentItems,
       { type: 'separator' },
       { label: '打开 HUD', click: () => this.callbacks.onOpen() },
       { label: 'HUD 设置', click: () => this.callbacks.onOpenSettings() },
-      { label: '统计后台', click: () => this.callbacks.onOpenStats() },
       {
         label: this.muted ? '取消静音' : '静音 30 分钟',
         click: () => {

@@ -8,8 +8,8 @@ import { join } from 'node:path'
 import { URL } from 'node:url'
 import type { UpdateInfo } from '@codepulse/shared'
 
-const LATEST_RELEASE_URL = 'https://api.github.com/repos/noeigenstate/CodePulse/releases/latest'
-const USER_AGENT = 'CodePulse-Desktop'
+const LATEST_RELEASE_URL = 'https://api.github.com/repos/LBW-C137/CodePulse-HUD/releases/latest'
+const USER_AGENT = 'CodePulse-HUD'
 
 /** Background GitHub release poll while the app is running. */
 export const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60_000
@@ -94,9 +94,8 @@ export function buildUpdateInfo(
   const version = tag ? parseVersionString(tag) : undefined
   if (!tag || !version || !isNewerVersion(version, currentVersion)) return null
 
-  // Automatic replacement is currently implemented with the Windows NSIS
-  // installer only. macOS and Linux users are sent to the release page so an
-  // AppImage never tries to launch a Windows executable as an updater.
+  // This product publishes a Windows NSIS installer only. Keep the platform
+  // guard so development or test launches elsewhere never execute an .exe.
   const installer = platform === 'win32' ? findWindowsInstaller(payload.assets, version) : null
   const releaseNotes = parseReleaseNotes(pickString(payload.body))
 
@@ -106,7 +105,7 @@ export function buildUpdateInfo(
     tag,
     releaseUrl:
       pickString(payload.html_url) ??
-      `https://github.com/noeigenstate/CodePulse/releases/tag/${encodeURIComponent(tag)}`,
+      `https://github.com/LBW-C137/CodePulse-HUD/releases/tag/${encodeURIComponent(tag)}`,
     installable: Boolean(installer),
     installerName: installer?.name,
     installerUrl: installer?.url,

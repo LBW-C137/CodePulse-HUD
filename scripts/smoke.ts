@@ -1,7 +1,7 @@
 // CodePulse 后端管线的端到端冒烟测试：
 // hook 载荷 -> POST /api/events -> 适配器 -> StatusHub（状态机 +
 // 规则引擎）-> GET /api/status 与 /api/device/status。
-// 不涉及 Electron，也不涉及 SQLite。
+// 不涉及 Electron，也不依赖持久化存储。
 import assert from 'node:assert/strict'
 import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -15,8 +15,6 @@ import {
   type NotificationRequest,
   TurnState,
 } from '@codepulse/shared'
-import { persistEvent } from '../packages/storage/src/repository.js'
-import { events, sessions, tokenSnapshots, turns } from '../packages/storage/src/sqlite/schema.js'
 import { buildDisplayAgents } from '../apps/desktop/src/renderer/src/lib/displayAgents.js'
 import { useStore } from '../apps/desktop/src/renderer/src/store.js'
 
@@ -54,82 +52,6 @@ function check(name: string, cond: boolean): void {
     failures += 1
     console.error(`  ✗ ${name}`)
   }
-}
-
-function createFakeDb() {
-  const rows = {
-    events: [] as Record<string, unknown>[],
-    sessions: [] as Record<string, unknown>[],
-    turns: [] as Record<string, unknown>[],
-    tokenSnapshots: [] as Record<string, unknown>[],
-  }
-
-  function bucket(table: unknown): Record<string, unknown>[] {
-    if (table === events) return rows.events
-    if (table === sessions) return rows.sessions
-    if (table === turns) return rows.turns
-    if (table === tokenSnapshots) return rows.tokenSnapshots
-    throw new Error('unknown fake table')
-  }
-
-  const db = {
-    rows,
-    transaction<T>(fn: (tx: typeof db) => T): T {
-      return fn(db)
-    },
-    insert(table: unknown) {
-      return {
-        values(value: Record<string, unknown>) {
-          return {
-            run() {
-              bucket(table).push({ ...value })
-            },
-          }
-        },
-      }
-    },
-    select() {
-      let table: unknown
-      const query = {
-        from(nextTable: unknown) {
-          table = nextTable
-          return query
-        },
-        where() {
-          return query
-        },
-        orderBy() {
-          return query
-        },
-        limit() {
-          return query
-        },
-        all() {
-          const data = [...bucket(table)]
-          if (table === turns) data.sort((a, b) => Number(b.startedAt) - Number(a.startedAt))
-          return data
-        },
-      }
-      return query
-    },
-    update(table: unknown) {
-      return {
-        set(value: Record<string, unknown>) {
-          return {
-            where() {
-              return {
-                run() {
-                  for (const row of bucket(table)) Object.assign(row, value)
-                },
-              }
-            },
-          }
-        },
-      }
-    },
-  }
-
-  return db as typeof db & Parameters<typeof persistEvent>[0]
 }
 
 try {
@@ -238,54 +160,6 @@ try {
   }
   const firedMap = (cleanupEngine as unknown as { lastFiredAt: Map<string, number> }).lastFiredAt
   check('rule engine bounds fired notification keys', firedMap.size === 2_048)
-
-  // --- 存储：终结状态不可被后续重复 stop 覆盖，token turnId 使用内部 id ----
-  const fakeDb = createFakeDb()
-  persistEvent(fakeDb, {
-    id: 'storage-prompt',
-    source: 'codex',
-    eventType: 'prompt_submit',
-    externalSessionId: 'storage-session',
-    externalTurnId: 'external-turn',
-    timestamp: 10,
-  })
-  persistEvent(fakeDb, {
-    id: 'storage-error',
-    source: 'codex',
-    eventType: 'turn_error',
-    externalSessionId: 'storage-session',
-    externalTurnId: 'external-turn',
-    message: 'failed',
-    timestamp: 20,
-  })
-  persistEvent(fakeDb, {
-    id: 'storage-stop',
-    source: 'codex',
-    eventType: 'turn_stop',
-    externalSessionId: 'storage-session',
-    externalTurnId: 'external-turn',
-    message: 'done',
-    timestamp: 30,
-  })
-  persistEvent(fakeDb, {
-    id: 'storage-token',
-    source: 'codex',
-    eventType: 'token_snapshot',
-    externalSessionId: 'storage-session',
-    externalTurnId: 'external-turn',
-    token: { total: 42, accuracy: 'estimated' },
-    timestamp: 40,
-  })
-  const storedTurn = fakeDb.rows.turns[0]
-  const storedToken = fakeDb.rows.tokenSnapshots[0]
-  check(
-    'storage keeps ERROR turn from being overwritten by later stop',
-    storedTurn?.state === 'ERROR',
-  )
-  check(
-    'storage token snapshot turnId uses internal turn id',
-    storedToken?.turnId === storedTurn?.id,
-  )
 
   // --- Claude Code：一次以授权请求结尾的提示 ----------------
   await post({

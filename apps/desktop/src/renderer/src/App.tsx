@@ -1,5 +1,5 @@
 /**
- * Dashboard 根组件。布局包含头部、agent 卡片网格与通知栏，
+ * HUD 根组件。布局包含头部、agent 项目卡片与用量摘要，
  * 并驱动高频时钟，使耗时与相对时间保持实时。
  *
  * @module renderer/App
@@ -30,7 +30,6 @@ import { useStore } from './store.js'
 import { Header } from './components/Header.js'
 import { ProjectDeck } from './components/ProjectDeck.js'
 import { SettingsDialog } from './components/SettingsDialog.js'
-import { StatsDashboard } from './components/StatsDashboard.js'
 import {
   acknowledgeCodexTrust,
   buildAgentSetupReminder,
@@ -90,9 +89,9 @@ import {
 import codePulseIcon from './assets/codepulse-icon.svg'
 
 /**
- * 应用外壳 Dashboard。
+ * 应用外壳 HUD。
  *
- * @returns 渲染后的 Dashboard。
+ * @returns 渲染后的 HUD 或设置界面。
  */
 export function App(): JSX.Element {
   // Select slices so update progress / mute ticks do not force unrelated work.
@@ -115,13 +114,11 @@ export function App(): JSX.Element {
   const [codexTrustAcknowledged, setCodexTrustAcknowledged] = useState<boolean>(() =>
     readCodexTrustAcknowledged(window.localStorage),
   )
-  /** 本地开发数据统计后台（设计稿大屏） */
   const rendererSurface = useMemo(
     () => new URLSearchParams(window.location.search).get('surface') ?? 'hud',
     [],
   )
   const standaloneSettings = rendererSurface === 'settings'
-  const [statsOpen, setStatsOpen] = useState(false)
   const legacyView = useMemo(
     () => new URLSearchParams(window.location.search).get('view') === 'legacy',
     [],
@@ -198,14 +195,6 @@ export function App(): JSX.Element {
   }, [orderedProjects])
 
   useEffect(() => init(), [init])
-
-  useEffect(
-    () =>
-      window.codepulse.onOpenStats(() => {
-        setStatsOpen(true)
-      }),
-    [],
-  )
 
   const toggleLocale = (): void => {
     setLocale((current) => {
@@ -353,16 +342,13 @@ export function App(): JSX.Element {
       data-attention-effect={attentionEffect}
       style={hudStyle}
     >
-      {statsOpen ? (
-        <StatsDashboard locale={locale} copy={copy} onClose={() => setStatsOpen(false)} />
-      ) : legacyView ? (
+      {legacyView ? (
         <>
           <Header
             locale={locale}
             muted={muted}
             onToggleLocale={toggleLocale}
             onToggleMute={toggleMute}
-            onOpenStats={() => setStatsOpen(true)}
             onOpenSettings={() => void window.codepulse.openSettingsWindow()}
             settingsOpen={false}
           />
@@ -396,7 +382,7 @@ export function App(): JSX.Element {
 
 /**
  * Keeps every actionable project visible even when its detailed CLI panel is
- * horizontally off-screen, hidden by preference, or replaced by Insights.
+ * outside the current layout or hidden by preference.
  */
 function HudAttentionRail({
   panels,
@@ -1532,7 +1518,7 @@ function RelativeTime({
  * @param props Component properties.
  * @param props.timing Latest normalized CLI turn-timing snapshot.
  * @param props.legacyStartedAt Active start retained for server-version compatibility.
- * @param props.locale Dashboard display locale.
+ * @param props.locale HUD display locale.
  * @returns The formatted elapsed-time text or an em dash when CLI timing is unknown.
  */
 function ElapsedTime({

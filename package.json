@@ -1,31 +1,33 @@
 {
-  "name": "codepulse-desktop",
+  "name": "codepulse-hud",
   "private": true,
-  "version": "1.4.0-hud.6",
-  "description": "CodePulse Desktop / 码脉桌面端 — local AI coding-agent status hub",
+  "version": "1.4.0",
+  "description": "CodePulse HUD — a local Windows HUD for AI coding agents",
   "license": "MIT",
+  "homepage": "https://github.com/LBW-C137/CodePulse-HUD#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LBW-C137/CodePulse-HUD.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LBW-C137/CodePulse-HUD/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @codepulse/desktop dev",
-    "build": "pnpm -r --filter ./packages/* build && pnpm --filter @codepulse/desktop build",
+    "dev": "pnpm --filter @codepulse-hud/desktop dev",
+    "build": "pnpm -r --filter ./packages/* build && pnpm --filter @codepulse-hud/desktop build",
     "build:packages": "pnpm -r --filter ./packages/* build",
-    "dist": "pnpm --filter @codepulse/desktop dist",
-    "dist:win": "pnpm --filter @codepulse/desktop dist:win",
-    "dist:linux": "pnpm --filter @codepulse/desktop dist:linux",
-    "dist:mac": "pnpm --filter @codepulse/desktop dist:mac",
-    "dist:mac:arm64": "pnpm --filter @codepulse/desktop dist:mac:arm64",
-    "dist:mac:x64": "pnpm --filter @codepulse/desktop dist:mac:x64",
+    "dist": "pnpm --filter @codepulse-hud/desktop dist",
+    "dist:win": "pnpm --filter @codepulse-hud/desktop dist:win",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tests/tsconfig.json",
-    "pretest": "npm rebuild better-sqlite3",
     "test": "node tests/run-tests.mjs",
     "smoke": "node scripts/run-smoke.mjs",
     "lint": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
-    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
-    "db:generate": "pnpm --filter @codepulse/storage db:generate"
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
@@ -38,7 +40,6 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@serialport/bindings-cpp",
-      "better-sqlite3",
       "electron",
       "esbuild"
     ]

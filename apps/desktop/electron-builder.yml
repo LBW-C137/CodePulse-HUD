@@ -1,5 +1,5 @@
-appId: dev.codepulse.desktop
-productName: CodePulse
+appId: io.github.lbwc137.codepulsehud
+productName: CodePulse HUD
 electronVersion: 33.3.1
 electronDist: ../../node_modules/electron/dist
 # SerialPort ships an N-API prebuild. The legacy rebuilder preserves it instead of
@@ -12,7 +12,7 @@ electronLanguages:
 directories:
   output: release
   buildResources: build
-# After pack: drop ffmpeg / swiftshader (dashboard has no media / soft-Vulkan need).
+# After pack: drop Windows software-Vulkan files the HUD does not need.
 afterPack: scripts/after-pack.cjs
 files:
   # Only app runtime outputs (never root-level preview screenshots under out/).
@@ -21,7 +21,7 @@ files:
   - out/renderer/**
   - build/icon.png
   - package.json
-  # Keep installers lean — native sqlite + serialport remain under node_modules.
+  # Keep the Windows installer lean; serialport remains under node_modules.
   - '!**/*.map'
   - '!**/*.d.ts'
   - '!**/*.md'
@@ -40,20 +40,9 @@ files:
   - '!**/benchmark/**'
   - '!**/benchmarks/**'
   - '!**/*.markdown'
-  - '!**/node_modules/better-sqlite3/deps/**'
-  - '!**/node_modules/better-sqlite3/src/**'
-  - '!**/node_modules/better-sqlite3/build/Release/obj/**'
-  - '!**/node_modules/better-sqlite3/build/Release/*.lib'
-  - '!**/node_modules/better-sqlite3/build/Release/*.exp'
-  - '!**/node_modules/better-sqlite3/build/Release/*.iobj'
-  - '!**/node_modules/better-sqlite3/build/Release/*.ipdb'
-  - '!**/node_modules/better-sqlite3/build/Release/*.pdb'
   - '!**/node_modules/@serialport/bindings-cpp/src/**'
   - '!**/node_modules/@serialport/bindings-cpp/build/**'
   - '!**/node_modules/@serialport/bindings-cpp/binding.gyp'
-  # NOTE: Do NOT exclude `bindings` / `file-uri-to-path` — better-sqlite3 loads
-  # the native addon via `require('bindings')('better_sqlite3.node')`. Stripping
-  # them leaves the installer's SQLite dead (live UI works, analytics empty).
   - '!**/node_modules/**/{prebuild-install,node-abi,napi-build-utils,tar-fs,tar-stream,rc,tunnel-agent,expand-template,github-from-package,simple-get,simple-concat,pump,bl,fs-constants,inherits,string_decoder,util-deprecate,buffer,base64-js,ieee754,minimist,deep-extend,ini,strip-json-comments,mkdirp-classic,chownr,detect-libc}/**'
 extraResources:
   - from: ../../packages/hooks
@@ -62,41 +51,15 @@ extraResources:
       - bin/**
       - lib/**
       - package.json
-# Native addons (SQLite + serialport bindings) must stay unpacked for dlopen().
+# Native serialport bindings must stay unpacked for dlopen().
 asarUnpack:
   - '**/*.node'
-  - '**/node_modules/better-sqlite3/**'
 win:
   icon: build/icon.png
-  artifactName: CodePulse_${version}_${arch}-setup.${ext}
+  artifactName: CodePulse-HUD_${version}_${arch}-setup.${ext}
   target:
     - nsis
-mac:
-  icon: build/icon.png
-  # Separate installers per CPU (NOT universal):
-  #   CodePulse_<version>_mac-arm64.dmg  → Apple Silicon
-  #   CodePulse_<version>_mac-x64.dmg    → Intel
-  artifactName: CodePulse_${version}_mac-${arch}.${ext}
-  category: public.app-category.developer-tools
-  hardenedRuntime: false
-  gatekeeperAssess: false
-  # Force per-arch packages; do not merge into a single universal binary.
-  target:
-    - target: dmg
-      arch:
-        - arm64
-        - x64
-linux:
-  icon: build/icon.png
-  artifactName: CodePulse_${version}_linux-${arch}.${ext}
-  target:
-    - target: AppImage
-      arch:
-        - x64
-  category: Development
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   include: build/installer.nsh
-dmg:
-  artifactName: CodePulse_${version}_mac-${arch}.${ext}

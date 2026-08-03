@@ -17,7 +17,6 @@ export * from './types/timing.js'
 export * from './types/runtime.js'
 export * from './types/device.js'
 export * from './types/update.js'
-export * from './types/stats.js'
 export * from './token-format.js'
 export * from './path.js'
 

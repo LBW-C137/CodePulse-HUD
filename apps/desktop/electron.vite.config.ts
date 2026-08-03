@@ -4,22 +4,19 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
 // Workspace packages are TypeScript source — must be bundled, not externalized.
-// Pure JS deps (fastify, drizzle-orm, …) are also bundled so the installer only
-// needs to ship the native better-sqlite3 addon (+ its JS glue).
+// Pure JS dependencies are bundled so the installer only ships runtime-native addons.
 const bundleIntoApp = [
   '@codepulse/shared',
   '@codepulse/core',
   '@codepulse/adapters',
-  '@codepulse/storage',
   '@codepulse/local-server',
-  'drizzle-orm',
   'fastify',
   '@fastify/websocket',
   'bonjour-service',
 ]
 
 /** Native modules that must not be bundled into the main process. */
-const nativeExternals = ['better-sqlite3', 'serialport'] as const
+const nativeExternals = ['serialport'] as const
 
 const emptyNativeStub = resolve(__dirname, 'scripts/empty-native-stub.cjs')
 
@@ -49,7 +46,7 @@ export default defineConfig({
     },
     plugins: [
       stubOptionalWsNatives(),
-      // Only keep better-sqlite3 (native) external; pack everything else into out/main.
+      // Keep native serial access external; pack the rest into out/main.
       externalizeDepsPlugin({
         exclude: bundleIntoApp,
         include: [...nativeExternals],

@@ -9,8 +9,6 @@ import type {
   UpdateDownloadProgress,
   UpdateInfo,
   UpdateInstallResult,
-  UsageStatsQuery,
-  UsageStatsSnapshot,
 } from '@codepulse/shared'
 
 type Unsubscribe = () => void
@@ -41,7 +39,6 @@ export interface CodePulseApi {
   getUpdate: () => Promise<UpdateInfo | null>
   dismissUpdate: () => Promise<boolean>
   installUpdate: () => Promise<UpdateInstallResult>
-  getStats: (query?: UsageStatsQuery) => Promise<UsageStatsSnapshot>
   syncSessions: () => Promise<StatusSnapshot>
   getDeviceProvisioning: () => Promise<DeviceProvisioningSnapshot>
   startDeviceScan: () => Promise<DeviceProvisioningSnapshot>
@@ -51,7 +48,6 @@ export interface CodePulseApi {
   onStatus: (cb: (snapshot: StatusSnapshot) => void) => Unsubscribe
   onAgents: (cb: (agents: Agent[]) => void) => Unsubscribe
   onMute: (cb: (muted: boolean) => void) => Unsubscribe
-  onOpenStats: (cb: () => void) => Unsubscribe
   onUpdateAvailable: (cb: (update: UpdateInfo) => void) => Unsubscribe
   onUpdateProgress: (cb: (progress: UpdateDownloadProgress) => void) => Unsubscribe
   onDeviceProvisioning: (cb: (snapshot: DeviceProvisioningSnapshot) => void) => Unsubscribe

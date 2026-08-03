@@ -44,15 +44,15 @@ test('buildUpdateInfo selects the latest Windows installer asset', () => {
   const info = buildUpdateInfo(
     {
       tag_name: 'v0.1.6',
-      html_url: 'https://github.com/noeigenstate/CodePulse/releases/tag/v0.1.6',
+      html_url: 'https://github.com/LBW-C137/CodePulse-HUD/releases/tag/v0.1.6',
       body: '## v0.1.6\n\n### 更新内容\n\n- 修复更新下载\n- 优化界面\n',
       assets: [
         {
-          name: 'CodePulse_0.1.6_x64-setup.exe.blockmap',
+          name: 'CodePulse-HUD_0.1.6_x64-setup.exe.blockmap',
           browser_download_url: 'https://example.test/blockmap',
         },
         {
-          name: 'CodePulse_0.1.6_x64-setup.exe',
+          name: 'CodePulse-HUD_0.1.6_x64-setup.exe',
           browser_download_url: 'https://example.test/installer',
         },
       ],
@@ -65,9 +65,9 @@ test('buildUpdateInfo selects the latest Windows installer asset', () => {
     currentVersion: '0.1.5',
     version: '0.1.6',
     tag: 'v0.1.6',
-    releaseUrl: 'https://github.com/noeigenstate/CodePulse/releases/tag/v0.1.6',
+    releaseUrl: 'https://github.com/LBW-C137/CodePulse-HUD/releases/tag/v0.1.6',
     installable: true,
-    installerName: 'CodePulse_0.1.6_x64-setup.exe',
+    installerName: 'CodePulse-HUD_0.1.6_x64-setup.exe',
     installerUrl: 'https://example.test/installer',
     releaseNotes: ['修复更新下载', '优化界面'],
   })
@@ -93,10 +93,10 @@ test('buildUpdateInfo returns null when release is not newer', () => {
     buildUpdateInfo(
       {
         tag_name: 'v0.1.5',
-        html_url: 'https://github.com/noeigenstate/CodePulse/releases/tag/v0.1.5',
+        html_url: 'https://github.com/LBW-C137/CodePulse-HUD/releases/tag/v0.1.5',
         assets: [
           {
-            name: 'CodePulse_0.1.5_x64-setup.exe',
+            name: 'CodePulse-HUD_0.1.5_x64-setup.exe',
             browser_download_url: 'https://example.test/installer',
           },
         ],
@@ -111,7 +111,7 @@ test('buildUpdateInfo still reports newer releases without a matching installer'
   const info = buildUpdateInfo(
     {
       tag_name: 'v0.1.6',
-      html_url: 'https://github.com/noeigenstate/CodePulse/releases/tag/v0.1.6',
+      html_url: 'https://github.com/LBW-C137/CodePulse-HUD/releases/tag/v0.1.6',
       assets: [{ name: 'latest.yml', browser_download_url: 'https://example.test/latest.yml' }],
     },
     '0.1.5',
@@ -123,7 +123,7 @@ test('buildUpdateInfo still reports newer releases without a matching installer'
     currentVersion: '0.1.5',
     version: '0.1.6',
     tag: 'v0.1.6',
-    releaseUrl: 'https://github.com/noeigenstate/CodePulse/releases/tag/v0.1.6',
+    releaseUrl: 'https://github.com/LBW-C137/CodePulse-HUD/releases/tag/v0.1.6',
     installable: false,
     installerName: undefined,
     installerUrl: undefined,
@@ -134,10 +134,10 @@ test('buildUpdateInfo does not auto-install mismatched installer assets', () => 
   const info = buildUpdateInfo(
     {
       tag_name: 'v0.1.6',
-      html_url: 'https://github.com/noeigenstate/CodePulse/releases/tag/v0.1.6',
+      html_url: 'https://github.com/LBW-C137/CodePulse-HUD/releases/tag/v0.1.6',
       assets: [
         {
-          name: 'CodePulse_0.1.5_x64-setup.exe',
+          name: 'CodePulse-HUD_0.1.5_x64-setup.exe',
           browser_download_url: 'https://example.test/installer',
         },
       ],
@@ -157,11 +157,11 @@ test('buildUpdateInfo never offers a Windows installer on Linux', () => {
       tag_name: 'v0.1.6',
       assets: [
         {
-          name: 'CodePulse_0.1.6_x64-setup.exe',
+          name: 'CodePulse-HUD_0.1.6_x64-setup.exe',
           browser_download_url: 'https://example.test/installer',
         },
         {
-          name: 'CodePulse_0.1.6_linux-x86_64.AppImage',
+          name: 'CodePulse-HUD_0.1.6_linux-x86_64.AppImage',
           browser_download_url: 'https://example.test/appimage',
         },
       ],
@@ -177,7 +177,7 @@ test('buildUpdateInfo never offers a Windows installer on Linux', () => {
 
 test('buildDownloadCandidates prefers GitHub mirrors before official URL', () => {
   const url =
-    'https://github.com/noeigenstate/CodePulse/releases/download/v0.1.9/CodePulse_0.1.9_x64-setup.exe'
+    'https://github.com/LBW-C137/CodePulse-HUD/releases/download/v0.1.9/CodePulse-HUD_0.1.9_x64-setup.exe'
   const candidates = buildDownloadCandidates(url)
   assert.ok(candidates[0]?.includes('ghfast.top'))
   assert.ok(candidates.some((item) => item.includes('gh-proxy.com')))
