@@ -269,15 +269,24 @@ export function reduce(current: AgentRuntimeState, event: AgentEvent): Transitio
 
     case 'session_end':
       if (isForeignTurnEvent(current, event)) break
-      next.state = TurnState.IDLE
+      // Closing the transport is not acknowledgement of its last result.
+      const preserveUnreadResult =
+        current.unread &&
+        [TurnState.DONE, TurnState.ERROR, TurnState.TIMEOUT, TurnState.USAGE_LIMITED].some(
+          (state) => state === current.state,
+        )
+      if (!preserveUnreadResult) next.state = TurnState.IDLE
       next.turnStartedAt = undefined
       next.turnTiming = completeTurnTiming(current, acceptedTurnTiming, event.timestamp)
       next.needPermission = false
       next.needUserInput = false
       next.toolName = undefined
-      next.activity = undefined
-      // Start the 5-minute idle retention clock when the session ends.
-      next.terminalAt = event.timestamp
+      if (!preserveUnreadResult) {
+        next.activity = undefined
+        next.unread = false
+        // Quiet session closure starts the ordinary idle retention clock.
+        next.terminalAt = event.timestamp
+      }
       if (!hasContextSnapshot(event.token)) next.token = markContextStale(next.token)
       break
 

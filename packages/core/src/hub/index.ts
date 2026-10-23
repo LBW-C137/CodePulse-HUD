@@ -76,6 +76,23 @@ export class StatusHub extends EventEmitter {
   private readonly auxiliarySessions = new Set<string>()
   /** 无活动看门狗定时器句柄（运行中时存在）。 */
   private tickTimer?: NodeJS.Timeout
+  /** Longer-lived presentation data shares the same canonical rows. The normal
+   * snapshot keeps its existing expiry behavior; no second backend/cache.
+   */
+  private presentationRetention?: (agent: Readonly<AgentRuntimeState>, now: number) => boolean
+  private presentationOnly = new Set<string>()
+
+  setPresentationRetention(keep?: (agent: Readonly<AgentRuntimeState>, now: number) => boolean): void {
+    this.presentationRetention = keep
+  }
+
+  /** Complete source for a surface with its own retention policy. */
+  snapshotForPresentation(now = Date.now()): StatusSnapshot {
+    const agents = [...this.agents.values()]
+      .map((agent) => this.usageStability.projectAgent(agent))
+      .sort(compareRuntimeState)
+    return buildStatusSnapshot(agents, now)
+  }
 
   /**
    * Creates a status hub instance.
@@ -128,6 +145,7 @@ export class StatusHub extends EventEmitter {
     const existing = this.agents.get(key)
     this.sessionKeys.delete(identity)
     if (existing?.externalSessionId === sessionId && this.agents.delete(key)) {
+      this.presentationOnly.delete(key)
       this.emit('status', this.snapshot())
     }
   }
@@ -203,6 +221,7 @@ export class StatusHub extends EventEmitter {
       next: this.usageStability.projectAgent(reduced.next),
     }
     this.agents.set(key, result.next)
+    if (!isExpiredAgent(result.next, event.timestamp)) this.presentationOnly.delete(key)
     this.rememberEventKey(event, key)
 
     this.emit('event', event)
@@ -284,6 +303,7 @@ export class StatusHub extends EventEmitter {
 
       if (agent.taskHidden) {
         this.agents.delete(key)
+        this.presentationOnly.delete(key)
         if (agent.externalSessionId) {
           this.sessionKeys.delete(sessionKey(agent.agentType, agent.externalSessionId))
         }
@@ -307,7 +327,12 @@ export class StatusHub extends EventEmitter {
 
    */
   snapshot(now = Date.now()): StatusSnapshot {
-    const agents = [...this.agents.values()]
+    const agents = [...this.agents.entries()].flatMap(([key, agent]) => {
+      if (!this.presentationOnly.has(key)) return [agent]
+      // Match the ordinary expiry view without destroying rows still needed
+      // by a longer-lived surface or clearing its unread result.
+      return hasRetainedQuota(agent.token) ? [{ ...agent, taskHidden: true, unread: false }] : []
+    })
       .map((agent) => this.usageStability.projectAgent(agent))
       .sort(compareRuntimeState)
     return buildStatusSnapshot(agents, now)
@@ -397,7 +422,18 @@ export class StatusHub extends EventEmitter {
   private pruneExpiredAgents(now: number): boolean {
     let changed = false
     for (const [key, agent] of [...this.agents.entries()]) {
-      if (!isExpiredAgent(agent, now)) continue
+      if (!isExpiredAgent(agent, now)) {
+        if (this.presentationOnly.delete(key)) changed = true
+        continue
+      }
+      if (!agent.taskHidden && this.presentationRetention?.(agent, now)) {
+        if (!this.presentationOnly.has(key)) {
+          this.presentationOnly.add(key)
+          changed = true
+        }
+        continue
+      }
+      this.presentationOnly.delete(key)
       if (hasRetainedQuota(agent.token)) {
         if (!agent.taskHidden || agent.unread) {
           this.agents.set(key, { ...agent, taskHidden: true, unread: false })

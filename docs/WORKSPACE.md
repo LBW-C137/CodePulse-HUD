@@ -48,7 +48,7 @@ concerns; do not rewrite another surface's canonical state to implement them.
 
 The unified host now keeps desktop HUD session-to-project bindings stable across
 execution-directory changes and restarts. See [HUD project identity](HUD-STABLE-PROJECTS.md)
-for grouping, acknowledgement boundaries and regression evidence.
+for grouping and acknowledgement boundaries. See [card retention](HUD-RETENTION.md) for the HUD timeout and unread-result rules.
 
 ## Device configuration and preview
 

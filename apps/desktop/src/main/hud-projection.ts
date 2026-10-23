@@ -1,3 +1,4 @@
+import { buildStatusSnapshot } from '@codepulse/core'
 import {
   TurnState,
   workspaceKey,
@@ -27,7 +28,7 @@ function activityKey(agent: AgentRuntimeState): string {
 /** Presentation state only. The canonical hub, dashboard and device API are never mutated. */
 export class HudProjection {
   private hidden = new Map<string, string>()
-  private retentionMinutes = 60
+  private retentionMinutes = 30
   private workspaces: HudWorkspaces
 
   constructor(path?: string, onError?: (error: unknown) => void) {
@@ -77,6 +78,22 @@ export class HudProjection {
     return rows.length > 0
   }
 
+  /** Used both for rendering and the hub's source-retention guard. */
+  shouldRetain(agent: Readonly<AgentRuntimeState>, now: number): boolean {
+    if (!HUD_AGENT_TYPES.has(agent.agentType) || agent.taskHidden) return false
+    const dismissedActivity = this.hidden.get(rowKey(agent))
+    if (dismissedActivity !== undefined && dismissedActivity === activityKey(agent)) return false
+    const quiet =
+      agent.state === TurnState.IDLE ||
+      agent.state === TurnState.CANCELLED ||
+      (!agent.unread &&
+        [TurnState.DONE, TurnState.ERROR, TurnState.TIMEOUT, TurnState.USAGE_LIMITED].some(
+          (state) => state === agent.state,
+        ))
+    const anchor = agent.terminalAt ?? agent.lastEventAt
+    return !quiet || anchor <= 0 || now - anchor < this.retentionMinutes * 60_000
+  }
+
   snapshot(source: StatusSnapshot, now = Date.now()): StatusSnapshot {
     const retained = new Set<string>()
     const agents = this.workspaces
@@ -86,23 +103,9 @@ export class HudProjection {
         retained.add(key)
         const hiddenActivity = this.hidden.get(key)
         if (hiddenActivity && hiddenActivity !== activityKey(agent)) this.hidden.delete(key)
-        const quiet =
-          agent.state === TurnState.IDLE ||
-          agent.state === TurnState.CANCELLED ||
-          ((
-            [
-              TurnState.DONE,
-              TurnState.ERROR,
-              TurnState.TIMEOUT,
-              TurnState.USAGE_LIMITED,
-            ] as string[]
-          ).includes(agent.state) &&
-            !agent.unread)
-        const expired =
-          quiet && now - (agent.terminalAt ?? agent.lastEventAt) >= this.retentionMinutes * 60_000
-        return this.hidden.has(key) || expired ? { ...agent, taskHidden: true } : agent
+        return this.shouldRetain(agent, now) ? agent : { ...agent, taskHidden: true }
       })
     for (const key of this.hidden.keys()) if (!retained.has(key)) this.hidden.delete(key)
-    return { ...source, agents }
+    return buildStatusSnapshot(agents, now)
   }
 }

@@ -33,6 +33,7 @@ export class HudSurface {
         '[codepulse] HUD project bindings could not be saved; keeping in-memory bindings',
       )
     })
+    this.hub.setPresentationRetention((agent, now) => this.projection.shouldRetain(agent, now))
     this.renderer = resolve(root, 'out/renderer/index.html')
     this.preload = resolve(root, 'out/preload/index.js')
     if (!existsSync(this.renderer) || !existsSync(this.preload)) {
@@ -44,12 +45,14 @@ export class HudSurface {
     return [this.window, this.settings].some((window) => window?.webContents.id === contents.id)
   }
 
-  snapshot(source = this.hub.snapshot()): StatusSnapshot {
-    return this.projection.snapshot(source)
+  snapshot(): StatusSnapshot {
+    return this.projection.snapshot(this.hub.snapshotForPresentation())
   }
 
   acknowledge(type: unknown, workspace?: string): void {
-    this.hub.acknowledgeRows(this.projection.rowsForProject(this.hub.snapshot(), type, workspace))
+    this.hub.acknowledgeRows(
+      this.projection.rowsForProject(this.hub.snapshotForPresentation(), type, workspace),
+    )
   }
 
   agents(agents: Agent[]): Agent[] {
@@ -63,7 +66,7 @@ export class HudSurface {
     if (!targets.length) return
     const value =
       channel === 'codepulse:status'
-        ? this.snapshot(payload as StatusSnapshot)
+        ? this.snapshot()
         : channel === 'codepulse:agents'
           ? this.agents(payload as Agent[])
           : payload
@@ -106,7 +109,9 @@ export class HudSurface {
     ipcMain.handle(
       'codepulse:dismiss-project-card',
       (_event, type: unknown, workspace?: string, session?: string) => {
-        const changed = this.projection.dismiss(this.hub.snapshot(), type, workspace, session)
+        const changed = this.projection.dismiss(
+          this.hub.snapshotForPresentation(), type, workspace, session,
+        )
         this.broadcast('codepulse:status', this.hub.snapshot())
         return changed
       },
