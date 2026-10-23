@@ -12,10 +12,14 @@ import type { TokenPayload } from '@codepulse/shared'
 import { writeClaudeQuotaCache } from '../claude-quota.js'
 import { resolveEventWorkspacePaths, WorkspacePathResolver } from '../workspace-path.js'
 
+import { CodexSessionTitles } from '../codex-session-titles.js'
+
 const MAX_EVENT_BATCH = 1000
 
 /** Optional hooks for coordinating event ingestion with background services. */
 export interface EventRouteOptions {
+  /** Optional native title-index root (tests/embedded hosts). */
+  codexHome?: string
   /** Returns whether Codex account quota comes from the App Server API. */
   isCodexQuotaAuthoritative?: () => boolean
   /** Schedules an account-quota refresh for a relevant Codex lifecycle event. */
@@ -43,6 +47,7 @@ export function registerEventRoutes(
   options: EventRouteOptions = {},
 ): void {
   const workspacePaths = new WorkspacePathResolver()
+  const codexTitles = new CodexSessionTitles(options.codexHome)
 
   app.post('/api/events', async (request, reply) => {
     const body = request.body
@@ -66,6 +71,14 @@ export function registerEventRoutes(
         workspacePaths,
       )
       let event = normalizeEvent(input)
+      if (
+        event.source === 'codex' &&
+        event.externalSessionId &&
+        !event.internal?.auxiliarySession
+      ) {
+        const title = (await codexTitles.read()).get(event.externalSessionId)
+        if (title) event = { ...event, taskTitle: title }
+      }
       if (event.source === 'codex' && options.isCodexQuotaAuthoritative?.()) {
         event = { ...event, token: withoutAccountQuota(event.token) }
       }

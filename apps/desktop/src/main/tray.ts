@@ -11,6 +11,7 @@ import { trayIconFor } from './icon.js'
 
 export interface TrayCallbacks {
   onOpen: () => void
+  onOpenHud?: () => void
   /** Put every CLI config back to its pre-CodePulse state, then quit. */
   onRestoreConfigsAndQuit: () => void
   onQuit: () => void
@@ -60,6 +61,9 @@ export class TrayController {
       ...agentItems,
       { type: 'separator' },
       { label: copy.open, click: () => this.callbacks.onOpen() },
+      ...(this.callbacks.onOpenHud
+        ? [{ label: 'CodePulse HUD', click: () => this.callbacks.onOpenHud?.() }]
+        : []),
       { type: 'separator' },
       { label: copy.restoreConfigs, click: () => this.callbacks.onRestoreConfigsAndQuit() },
       { label: copy.quit, click: () => this.callbacks.onQuit() },

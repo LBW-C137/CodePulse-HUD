@@ -27,6 +27,8 @@ export interface AgentRuntimeState {
   externalTurnId?: string
   /** agent 正在工作的工作区路径。 */
   workspacePath?: string
+  /** Explicit native task/session title; workspace remains the fallback. */
+  taskTitle?: string
   /** 使用的模型（如已知）。 */
   model?: string
   /** 当前模型配置的思考深度；未知时不从 token 用量推断。 */

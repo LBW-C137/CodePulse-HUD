@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { HudSurface } from './hud-surface.js'
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { homedir, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
@@ -18,6 +19,9 @@ import {
   type UsageLedgerSnapshot,
 } from '@codepulse/shared'
 import { StatusHub } from '@codepulse/core'
+import { normalizeDeviceDisplay } from '@codepulse/shared'
+import { createDeviceDisplayProjector } from './device-display-projection.js'
+import { readDeviceDisplayConfig, writeDeviceDisplayConfig } from './device-display-settings.js'
 import {
   openDb,
   persistEvent,
@@ -103,6 +107,7 @@ let deviceProvisioning: DeviceProvisioningSnapshot = {
 }
 
 const hub = new StatusHub()
+let hudSurface: HudSurface | null = null
 const focusSync = new FocusSyncScheduler(async () => {
   await server?.syncSessions()
 }, FOCUS_SYNC_DEBOUNCE_MS)
@@ -121,6 +126,7 @@ function scheduleFocusSync(): void {
 
 function broadcast(channel: string, payload: unknown): void {
   mainWindow?.webContents.send(channel, payload)
+  hudSurface?.broadcast(channel, payload)
 }
 
 function updateDeviceProvisioning(
@@ -280,8 +286,28 @@ function setWindowTheme(value: unknown, targetWindow: BrowserWindow | null): Win
   return windowTheme
 }
 
+let deviceProjector: ReturnType<typeof createDeviceDisplayProjector> | undefined
+function projectDeviceDisplay(snapshot: StatusSnapshot, config?: import('@codepulse/shared').DeviceDisplayConfig) {
+  deviceProjector ??= createDeviceDisplayProjector(join(app.getPath('userData'), 'device-thread-order.json'),
+    () => console.warn('[codepulse] device display order could not be saved; retaining in-memory positions'))
+  return deviceProjector(snapshot, config)
+}
+
+function deviceDisplaySnapshot(preview?: unknown) {
+  const config = readDeviceDisplayConfig(join(app.getPath('userData'), 'device-display.json'))
+  return { config, status: projectDeviceDisplay(hub.snapshot(), preview === undefined ? config : normalizeDeviceDisplay(preview)), serverAvailable: Boolean(deviceServer) }
+}
+
 function registerIpc(): void {
-  ipcMain.handle('codepulse:get-status', () => hub.snapshot())
+  ipcMain.handle('codepulse:get-device-display', (_event, preview: unknown) => deviceDisplaySnapshot(preview))
+  ipcMain.handle('codepulse:set-device-display', (_event, input: unknown) => {
+    writeDeviceDisplayConfig(join(app.getPath('userData'), 'device-display.json'), input)
+    deviceServer?.notifyChanged()
+    return deviceDisplaySnapshot()
+  })
+  ipcMain.handle('codepulse:get-status', (event) =>
+    hudSurface?.owns(event.sender) ? hudSurface.snapshot() : hub.snapshot(),
+  )
   ipcMain.handle('codepulse:ack', (_event, agent: AgentType, workspacePath?: string) => {
     hub.acknowledge(agent, workspacePath)
     return true
@@ -293,9 +319,14 @@ function registerIpc(): void {
   })
   ipcMain.handle('codepulse:set-locale', (_event, locale: unknown) => setLocale(locale))
   ipcMain.handle('codepulse:set-window-theme', (event, theme: unknown) =>
-    setWindowTheme(theme, BrowserWindow.fromWebContents(event.sender)),
+    hudSurface?.owns(event.sender)
+      ? hudSurface.setTheme(event.sender, theme)
+      : setWindowTheme(theme, BrowserWindow.fromWebContents(event.sender)),
   )
-  ipcMain.handle('codepulse:detect-agents', () => refreshLocalAgents())
+  ipcMain.handle('codepulse:detect-agents', async (event) => {
+    const agents = await refreshLocalAgents()
+    return hudSurface?.owns(event.sender) ? hudSurface.agents(agents) : agents
+  })
   ipcMain.handle('codepulse:get-update', () => {
     // Respect 24h "later" snooze even if a previous check still has cached info.
     if (isUpdateSnoozed(readUpdateSnoozeUntil())) {
@@ -330,9 +361,9 @@ function registerIpc(): void {
     getUsageSnapshot(query),
   )
   /** 渲染进程主动触发本机 CLI 会话扫盘（不依赖 hook / 用户发消息）。 */
-  ipcMain.handle('codepulse:sync-sessions', async () => {
+  ipcMain.handle('codepulse:sync-sessions', async (event) => {
     await focusSync.schedule()
-    return hub.snapshot()
+    return hudSurface?.owns(event.sender) ? hudSurface.snapshot() : hub.snapshot()
   })
   ipcMain.handle('codepulse:mimo-login-status', async () => Boolean(await readMimoCookie()))
   ipcMain.handle('codepulse:mimo-login', async () => {
@@ -449,6 +480,11 @@ async function bootstrap(): Promise<void> {
     )
   }
 
+  const hudRoot = process.env.CODEPULSE_HUD_ROOT
+  if (hudRoot) {
+    hudSurface = new HudSurface(hub, hudRoot)
+    hudSurface.registerIpc()
+  }
   wireHub()
   registerIpc()
 
@@ -471,6 +507,8 @@ async function bootstrap(): Promise<void> {
     try {
       deviceServer = await startDeviceServer({
         hub,
+        projectStatus: projectDeviceDisplay,
+        getDisplayConfig: () => readDeviceDisplayConfig(join(app.getPath('userData'), 'device-display.json')),
         host: deviceConfig.host,
         port: deviceConfig.port,
         authToken: deviceConfig.authToken,
@@ -516,6 +554,7 @@ async function bootstrap(): Promise<void> {
 
   tray = new TrayController({
     onOpen: showWindow,
+    ...(hudSurface ? { onOpenHud: () => hudSurface?.open() } : {}),
     onRestoreConfigsAndQuit: () => {
       void restoreConfigsAndQuit()
     },
@@ -528,6 +567,7 @@ async function bootstrap(): Promise<void> {
   setLocale(app.getLocale().toLowerCase().startsWith('zh') ? 'zh' : 'en')
 
   createWindow()
+  hudSurface?.open()
   // Safety net: rescan after the window is up (covers late-arriving rollouts).
   scheduleFocusSync()
   void checkForUpdatesOnce()

@@ -2,6 +2,8 @@
 import type {
   Agent,
   AgentType,
+  DeviceDisplayConfig,
+  DeviceDisplaySnapshot,
   DeviceProvisioningRequest,
   DeviceProvisioningSnapshot,
   StatusSnapshot,
@@ -48,6 +50,8 @@ export interface CodePulseApi {
   loginMimo: () => Promise<boolean>
   /** Clears the MiMo console login. */
   logoutMimo: () => Promise<boolean>
+  getDeviceDisplay: (preview?: DeviceDisplayConfig) => Promise<DeviceDisplaySnapshot>
+  setDeviceDisplay: (config: DeviceDisplayConfig) => Promise<DeviceDisplaySnapshot>
   getDeviceProvisioning: () => Promise<DeviceProvisioningSnapshot>
   startDeviceScan: () => Promise<DeviceProvisioningSnapshot>
   stopDeviceScan: () => Promise<DeviceProvisioningSnapshot>

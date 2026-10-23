@@ -17,6 +17,7 @@ import {
   type UiLocale,
   TurnState,
   workspaceKey,
+  normalizeTaskTitle,
 } from '@codepulse/shared'
 import { buildStatusSnapshot } from '../aggregate/index.js'
 import { createInitialRuntimeState, reduce } from '../state-machine/index.js'
@@ -71,6 +72,8 @@ export class StatusHub extends EventEmitter {
   private readonly usageStability = new UsageStabilityRegistry()
   /** Hook deliveries already applied; prevents a lost HTTP response from double-counting. */
   private readonly seenHookEventIds = new Set<string>()
+  /** Bounded provenance tombstones stop later tools/Stop events resurrecting helpers. */
+  private readonly auxiliarySessions = new Set<string>()
   /** 无活动看门狗定时器句柄（运行中时存在）。 */
   private tickTimer?: NodeJS.Timeout
 
@@ -94,9 +97,52 @@ export class StatusHub extends EventEmitter {
 
    */
   ingest(event: AgentEvent): boolean {
+    if (!this.acceptSession(event)) return false
     if (!this.acceptHookDelivery(event.id)) return false
     this.applyEvent(event)
     return true
+  }
+
+  /** Reject helper activity before persistence, state transitions and notifications. */
+  private acceptSession(event: AgentEvent): boolean {
+    if (event.internal?.auxiliarySession) {
+      if (event.externalSessionId)
+        this.excludeAuxiliarySession(event.source, event.externalSessionId)
+      return false
+    }
+    return (
+      !event.externalSessionId ||
+      !this.auxiliarySessions.has(sessionKey(event.source, event.externalSessionId))
+    )
+  }
+
+  /** Excludes one positively identified helper; never hides its workspace or parent. */
+  excludeAuxiliarySession(source: AgentType, sessionId: string): void {
+    const identity = sessionKey(source, sessionId)
+    this.auxiliarySessions.delete(identity)
+    this.auxiliarySessions.add(identity)
+    while (this.auxiliarySessions.size > MAX_SEEN_HOOK_EVENTS) {
+      this.auxiliarySessions.delete(this.auxiliarySessions.values().next().value!)
+    }
+    const key = this.sessionKeys.get(identity) ?? sessionRuntimeKey(source, sessionId)
+    const existing = this.agents.get(key)
+    this.sessionKeys.delete(identity)
+    if (existing?.externalSessionId === sessionId && this.agents.delete(key)) {
+      this.emit('status', this.snapshot())
+    }
+  }
+
+  /** Native renames update presentation without new activity, unread state, or notifications. */
+  updateSessionTitles(source: AgentType, titles: ReadonlyMap<string, string>): void {
+    let changed = false
+    for (const [key, current] of this.agents) {
+      if (current.agentType !== source || !current.externalSessionId) continue
+      const title = normalizeTaskTitle(titles.get(current.externalSessionId))
+      if (!title || title === current.taskTitle) continue
+      this.agents.set(key, { ...current, taskTitle: title })
+      changed = true
+    }
+    if (changed) this.emit('status', this.snapshot())
   }
 
   /**
@@ -133,6 +179,7 @@ export class StatusHub extends EventEmitter {
 
    */
   observeQuota(event: AgentEvent): boolean {
+    if (!this.acceptSession(event)) return false
     const stabilized = this.usageStability.stabilizeEvent(event)
     const key = this.keyForEvent(stabilized)
     const current = this.agents.get(key) ?? createInitialRuntimeState(stabilized.source)

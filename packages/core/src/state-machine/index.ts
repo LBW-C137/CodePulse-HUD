@@ -21,6 +21,7 @@ import {
   isActiveState,
   isTerminalState,
   normalizeWorkspacePath,
+  normalizeTaskTitle,
   maxResetAheadMs,
 } from '@codepulse/shared'
 
@@ -90,6 +91,8 @@ export function reduce(current: AgentRuntimeState, event: AgentEvent): Transitio
   let modelSnapshotAccepted = true
   if (!tokenOnlyQuotaRefresh) {
     if (event.externalSessionId) next.externalSessionId = event.externalSessionId
+    const taskTitle = normalizeTaskTitle(event.taskTitle)
+    if (taskTitle) next.taskTitle = taskTitle
     if (!deferSynchronizedTurnIdentity && shouldAdoptExternalTurnId(current, event)) {
       next.externalTurnId = event.externalTurnId
     }

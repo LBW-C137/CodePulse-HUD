@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import type { SettingsCopy } from '../lib/i18n.js'
 import { CLI_TOOL_TYPES, type CliToolType, type ThemePreference } from '../lib/dashboardSettings.js'
+import { DeviceDisplayPanel } from './DeviceDisplayPanel.js'
 import { DeviceProvisioningPanel } from './DeviceProvisioningPanel.js'
 
 interface Props {
@@ -238,6 +239,7 @@ export function SettingsDialog({
             </div>
           </section>
 
+          <DeviceDisplayPanel />
           <DeviceProvisioningPanel copy={copy.deviceProvisioning} />
 
           <section>

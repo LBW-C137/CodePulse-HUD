@@ -52,6 +52,8 @@ export interface AgentEvent {
   externalTurnId?: string
   /** agent 上报的工作区路径。 */
   workspacePath?: string
+  /** Explicit native task/session title; workspace remains the fallback. */
+  taskTitle?: string
   /** agent 上报的当前工作目录。 */
   cwd?: string
   /** 使用的模型（如有上报）。 */
@@ -90,6 +92,8 @@ export interface AgentEvent {
 
   /** Internal metadata produced by CodePulse itself rather than CLI hooks. */
   internal?: {
+    /** App-owned helper session, excluded before lifecycle/notification ingestion. */
+    auxiliarySession?: boolean
     /** Token-only quota refreshes must not update project recency or runtime model. */
     quotaRefresh?: boolean
     /** Stable identifier shared by quota events fanned out from one source read. */

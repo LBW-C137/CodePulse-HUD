@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type {
   Agent,
   AgentType,
+  DeviceDisplayConfig,
+  DeviceDisplaySnapshot,
   DeviceProvisioningRequest,
   DeviceProvisioningSnapshot,
   StatusSnapshot,
@@ -59,6 +61,8 @@ const api = {
   loginMimo: (): Promise<boolean> => ipcRenderer.invoke('codepulse:mimo-login'),
   /** Clears the MiMo console login. */
   logoutMimo: (): Promise<boolean> => ipcRenderer.invoke('codepulse:mimo-logout'),
+  getDeviceDisplay: (preview?: DeviceDisplayConfig): Promise<DeviceDisplaySnapshot> => ipcRenderer.invoke('codepulse:get-device-display', preview),
+  setDeviceDisplay: (config: DeviceDisplayConfig): Promise<DeviceDisplaySnapshot> => ipcRenderer.invoke('codepulse:set-device-display', config),
   getDeviceProvisioning: (): Promise<DeviceProvisioningSnapshot> =>
     ipcRenderer.invoke('codepulse:get-device-provisioning'),
   startDeviceScan: (): Promise<DeviceProvisioningSnapshot> =>

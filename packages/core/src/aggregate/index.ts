@@ -1,3 +1,6 @@
+import { deviceThreadId, isDeviceThreadSource, orderDeviceThreadSources, type DeviceThreadOrder } from './device-thread-order.js'
+
+import { normalizeDeviceDisplay, type DeviceDisplayConfig, type DeviceThreadV1 } from '@codepulse/shared'
 /**
  * 聚合辅助函数：把各 agent 的运行时状态收敛为 UI 与硬件消费的视图 ——
  * 托盘总体指示、完整状态快照，以及极简设备投影。
@@ -115,7 +118,7 @@ export function toDeviceStatus(snapshot: StatusSnapshot): DeviceStatus {
  * 每种 CLI 最多返回一条最相关状态，同时合并该 CLI 在不同工作区捕获到的
  * 额度桶。绝对工作区路径不会离开电脑，只传目录名。
  */
-export function toDeviceStatusV1(snapshot: StatusSnapshot): DeviceStatusV1 {
+export function toDeviceStatusV1(snapshot: StatusSnapshot, displayConfig?: DeviceDisplayConfig, order?: DeviceThreadOrder): DeviceStatusV1 {
   const projections = DEVICE_AGENT_ORDER.flatMap((agentType) => {
     const states = snapshot.agents.filter((agent) => agent.agentType === agentType)
     if (states.length === 0) return []
@@ -142,7 +145,7 @@ export function toDeviceStatusV1(snapshot: StatusSnapshot): DeviceStatusV1 {
   })
 
   const active = projections
-    .filter((projection) => !projection.source.taskHidden)
+    .filter((projection) => !projection.source.taskHidden && projection.source.lastEventAt > 0)
     .sort((a, b) => compareDeviceAgents(a.source, b.source))[0]
   const mainState = mapMainState(snapshot.overall)
   const content: Omit<DeviceStatusV1, 'revision'> = {
@@ -158,6 +161,22 @@ export function toDeviceStatusV1(snapshot: StatusSnapshot): DeviceStatusV1 {
     ),
   }
 
+  if (displayConfig) {
+    const config = normalizeDeviceDisplay(displayConfig)
+    // HUD presentation ordering is independent from the canonical hub's activity order.
+    const sources = snapshot.agents.filter(isDeviceThreadSource).filter(s => config.agents.includes(s.agentType))
+    const threads: DeviceThreadV1[] = orderDeviceThreadSources(sources, order).map(source => {
+      const id = deviceThreadId(source)
+      return { id, type: source.agentType,
+        title: deviceUtf8Text(source.taskTitle?.trim() || workspaceBasename(source.workspacePath) || source.agentType, 96),
+        detail: deviceUtf8Text(projectDeviceActivity(source) ?? '', 96),
+        state: mapDeviceAgentState(source.state) }
+    })
+    config.page = Math.min(config.page, Math.max(0, Math.ceil(threads.length / 9) - 1))
+    content.display = config
+    content.threadTotal = threads.length
+    content.threads = threads.slice(config.page * 9, config.page * 9 + 9)
+  }
   return { ...content, revision: createDeviceRevision(content) }
 }
 
@@ -462,4 +481,14 @@ function overallMessage(overall: OverallState): string {
     default:
       return '空闲'
   }
+}
+
+/** Byte bound agrees with the MCU UTF-8 buffers; never split a code point. */
+function deviceUtf8Text(text: string, limit: number): string {
+  let result = ''
+  for (const char of text.replace(/[\x00-\x1f\x7f]/g, ' ')) {
+    if (Buffer.byteLength(result + char, 'utf8') > limit) break
+    result += char
+  }
+  return result
 }
