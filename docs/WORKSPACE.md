@@ -46,6 +46,10 @@ Shared state, CLI hooks, account collection and the device API belong to this
 host. Themes, layout, temporary dismissal and device ordering remain presentation
 concerns; do not rewrite another surface's canonical state to implement them.
 
+The unified host now keeps desktop HUD session-to-project bindings stable across
+execution-directory changes and restarts. See [HUD project identity](HUD-STABLE-PROJECTS.md)
+for grouping, acknowledgement boundaries and regression evidence.
+
 ## Device configuration and preview
 
 In Settings → device display configuration, HUD and usage modes are drafts until

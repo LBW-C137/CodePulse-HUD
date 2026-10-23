@@ -1,11 +1,15 @@
-import { TurnState, type AgentRuntimeState, type StatusSnapshot } from '@codepulse/shared'
+import {
+  TurnState,
+  workspaceKey,
+  type AgentRuntimeState,
+  type StatusSnapshot,
+} from '@codepulse/shared'
+import { HudWorkspaces, hudRowKey, hudWorkspacePath, isHudProjectRoot } from './hud-workspaces.js'
 
 /** HUD 1.4 supports these renderers; newer providers stay visible in the full console. */
 export const HUD_AGENT_TYPES = new Set(['claude_code', 'codex', 'grok', 'kimi'])
 
-function rowKey(agent: AgentRuntimeState): string {
-  return JSON.stringify([agent.agentType, agent.workspacePath ?? '', agent.externalSessionId ?? ''])
-}
+const rowKey = hudRowKey
 
 /** Quota/timestamp refreshes do not resurrect a card dismissed in this surface. */
 function activityKey(agent: AgentRuntimeState): string {
@@ -24,6 +28,36 @@ function activityKey(agent: AgentRuntimeState): string {
 export class HudProjection {
   private hidden = new Map<string, string>()
   private retentionMinutes = 60
+  private workspaces: HudWorkspaces
+
+  constructor(path?: string, onError?: (error: unknown) => void) {
+    this.workspaces = new HudWorkspaces(path, onError)
+  }
+
+  /** Resolve a displayed project back to canonical sessions, not their tool cwd.
+   * Nested workspaces may be coalesced into a parent card by the HUD renderer.
+   * Pathless "read all" keeps the existing provider-wide acknowledgement contract.
+   */
+  rowsForProject(source: StatusSnapshot, type: unknown, workspace?: string): AgentRuntimeState[] {
+    const path = workspaceKey(hudWorkspacePath(workspace))
+    const rows = this.workspaces.project(
+      source.agents.filter((agent) => HUD_AGENT_TYPES.has(agent.agentType)),
+    )
+    const keys = new Set(
+      rows
+        .filter((agent) => {
+          if (agent.agentType !== type) return false
+          const candidate = workspaceKey(agent.workspacePath)
+          return (
+            !path ||
+            candidate === path ||
+            (isHudProjectRoot(path) && candidate.startsWith(`${path}/`))
+          )
+        })
+        .map(rowKey),
+    )
+    return source.agents.filter((agent) => keys.has(rowKey(agent)))
+  }
 
   setRetention(value: unknown): boolean {
     if (typeof value !== 'number' || ![10, 30, 60, 120, 240].includes(value)) return false
@@ -32,20 +66,21 @@ export class HudProjection {
   }
 
   dismiss(snapshot: StatusSnapshot, type: unknown, workspace?: string, session?: string): boolean {
-    const rows = snapshot.agents.filter(
-      (agent) =>
-        agent.agentType === type &&
-        agent.workspacePath === workspace &&
-        (!session || agent.externalSessionId === session),
-    )
+    const rows = session
+      ? snapshot.agents.filter(
+          (agent) => agent.agentType === type && agent.externalSessionId === session,
+        )
+      : this.rowsForProject(snapshot, type, workspace).filter(
+          (agent) => workspace || !hudWorkspacePath(agent.workspacePath),
+        )
     for (const agent of rows) this.hidden.set(rowKey(agent), activityKey(agent))
     return rows.length > 0
   }
 
   snapshot(source: StatusSnapshot, now = Date.now()): StatusSnapshot {
     const retained = new Set<string>()
-    const agents = source.agents
-      .filter((agent) => HUD_AGENT_TYPES.has(agent.agentType))
+    const agents = this.workspaces
+      .project(source.agents.filter((agent) => HUD_AGENT_TYPES.has(agent.agentType)))
       .map((agent) => {
         const key = rowKey(agent)
         retained.add(key)

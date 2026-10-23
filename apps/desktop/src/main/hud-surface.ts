@@ -18,7 +18,7 @@ import {
 export class HudSurface {
   private window: BrowserWindow | null = null
   private settings: BrowserWindow | null = null
-  private projection = new HudProjection()
+  private projection: HudProjection
   private theme: WindowTheme = 'light'
   private renderer: string
   private preload: string
@@ -26,7 +26,13 @@ export class HudSurface {
   constructor(
     private hub: StatusHub,
     root: string,
+    workspaceBindingsPath?: string,
   ) {
+    this.projection = new HudProjection(workspaceBindingsPath, () => {
+      console.warn(
+        '[codepulse] HUD project bindings could not be saved; keeping in-memory bindings',
+      )
+    })
     this.renderer = resolve(root, 'out/renderer/index.html')
     this.preload = resolve(root, 'out/preload/index.js')
     if (!existsSync(this.renderer) || !existsSync(this.preload)) {
@@ -42,20 +48,26 @@ export class HudSurface {
     return this.projection.snapshot(source)
   }
 
+  acknowledge(type: unknown, workspace?: string): void {
+    this.hub.acknowledgeRows(this.projection.rowsForProject(this.hub.snapshot(), type, workspace))
+  }
+
   agents(agents: Agent[]): Agent[] {
     return agents.filter((agent) => HUD_AGENT_TYPES.has(agent.type))
   }
 
   broadcast(channel: string, payload: unknown): void {
+    const targets = [this.window, this.settings].filter((window) => window && !window.isDestroyed())
+    // Bootstrap replays historical execution cwd before native metadata has
+    // hydrated. Bind only when a surface actually observes the current state.
+    if (!targets.length) return
     const value =
       channel === 'codepulse:status'
         ? this.snapshot(payload as StatusSnapshot)
         : channel === 'codepulse:agents'
           ? this.agents(payload as Agent[])
           : payload
-    for (const window of [this.window, this.settings]) {
-      if (window && !window.isDestroyed()) window.webContents.send(channel, value)
-    }
+    for (const window of targets) window!.webContents.send(channel, value)
   }
 
   setTheme(contents: WebContents, value: unknown): WindowTheme {

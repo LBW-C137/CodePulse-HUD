@@ -308,8 +308,9 @@ function registerIpc(): void {
   ipcMain.handle('codepulse:get-status', (event) =>
     hudSurface?.owns(event.sender) ? hudSurface.snapshot() : hub.snapshot(),
   )
-  ipcMain.handle('codepulse:ack', (_event, agent: AgentType, workspacePath?: string) => {
-    hub.acknowledge(agent, workspacePath)
+  ipcMain.handle('codepulse:ack', (event, agent: AgentType, workspacePath?: string) => {
+    if (hudSurface?.owns(event.sender)) hudSurface.acknowledge(agent, workspacePath)
+    else hub.acknowledge(agent, workspacePath)
     return true
   })
   ipcMain.handle('codepulse:get-notifications', () => notificationsEnabled)
@@ -482,7 +483,7 @@ async function bootstrap(): Promise<void> {
 
   const hudRoot = process.env.CODEPULSE_HUD_ROOT
   if (hudRoot) {
-    hudSurface = new HudSurface(hub, hudRoot)
+    hudSurface = new HudSurface(hub, hudRoot, join(app.getPath('userData'), 'hud-workspaces.json'))
     hudSurface.registerIpc()
   }
   wireHub()

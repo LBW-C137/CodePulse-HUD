@@ -234,6 +234,25 @@ export class StatusHub extends EventEmitter {
     if (changed) this.emit('status', this.snapshot())
   }
 
+  /** Acknowledge exactly the rows represented by a presentation's project card.
+   * Session IDs take precedence over mutable cwd. Legacy path-only rows never
+   * acknowledge unrelated session-backed rows that happen to share that cwd.
+   */
+  acknowledgeRows(rows: readonly AgentRuntimeState[]): void {
+    const identity = (agent: AgentRuntimeState): string =>
+      agent.externalSessionId
+        ? sessionRuntimeKey(agent.agentType, agent.externalSessionId)
+        : runtimeKey(agent.agentType, agent.workspacePath ?? '')
+    const targets = new Set(rows.map(identity))
+    let changed = false
+    for (const [key, current] of this.agents) {
+      if (!current.unread || !targets.has(identity(current))) continue
+      this.agents.set(key, { ...current, unread: false })
+      changed = true
+    }
+    if (changed) this.emit('status', this.snapshot())
+  }
+
   /** 让后续系统通知使用桌面端当前选择的语言。
 
    * @param locale Active user-interface locale.
