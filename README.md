@@ -25,6 +25,7 @@ CodePulse HUD is a transparent, frameless, always-on-top Windows app that stays 
 
 - **Independent cards for every agent and project:** agents in the same workspace are grouped closely, while each card keeps its own status, timer, context, animation, and actions.
 - **Stable attention semantics:** permission/input waits, unread completions, and unread failures stay orange; ordinary work remains neutral.
+- **One coherent HUD icon system:** the app, installer, and tray share a translucent white pane and orange pulse. Orange is permanent branding; only the tray's small top-right dot means something needs attention.
 - **Different actions for different moments:** live waits use “Read,” while a genuinely finished turn uses “Done.”
 - **Temporary per-card dismissal:** the small `×` hides only that card, exactly like retention expiry. New real activity makes it eligible to appear again.
 - **Predictable retention:** idle, cancelled, and acknowledged result cards share the selected 10 / 30 / 60 / 120 / 240 minute retention setting.

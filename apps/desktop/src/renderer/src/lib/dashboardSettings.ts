@@ -57,8 +57,9 @@ interface ThemeRoot {
 }
 
 export const DASHBOARD_SETTINGS_STORAGE_KEY = 'codepulse:dashboard-settings'
-/** Version 2 changes the original three-column default into a single project lane. */
-const DASHBOARD_SETTINGS_SCHEMA_VERSION = 2
+/** Version 3 migrates the former 92% background default to the lighter 37% HUD surface. */
+const DASHBOARD_SETTINGS_SCHEMA_VERSION = 3
+const LEGACY_DEFAULT_HUD_OPACITY = 92
 const LIGHT_THEME_START_HOUR = 8
 const DARK_THEME_START_HOUR = 20
 export const HUD_OPACITY_MIN = 20
@@ -68,7 +69,7 @@ export const HUD_OPACITY_MAX = 100
 export const DEFAULT_DASHBOARD_SETTINGS: DashboardSettings = {
   // The companion HUD defaults to GroundControl's light, black-text language.
   theme: 'light',
-  hudOpacity: 92,
+  hudOpacity: 37,
   attentionEffect: 'steady',
   projectLayout: 'list',
   showUsageStrip: true,
@@ -104,15 +105,22 @@ export function readDashboardSettings(storage: StorageLike | undefined): Dashboa
     const parsed = JSON.parse(raw) as unknown
     if (!isRecord(parsed)) return cloneSettings(DEFAULT_DASHBOARD_SETTINGS)
     const visibleTools = isRecord(parsed.visibleTools) ? parsed.visibleTools : {}
+    const schemaVersion =
+      typeof parsed.schemaVersion === 'number' && Number.isInteger(parsed.schemaVersion)
+        ? parsed.schemaVersion
+        : 0
     return {
       theme: isThemePreference(parsed.theme) ? parsed.theme : DEFAULT_DASHBOARD_SETTINGS.theme,
-      hudOpacity: normalizeHudOpacity(parsed.hudOpacity),
+      hudOpacity:
+        schemaVersion < DASHBOARD_SETTINGS_SCHEMA_VERSION &&
+        parsed.hudOpacity === LEGACY_DEFAULT_HUD_OPACITY
+          ? DEFAULT_DASHBOARD_SETTINGS.hudOpacity
+          : normalizeHudOpacity(parsed.hudOpacity),
       attentionEffect: isHudAttentionEffect(parsed.attentionEffect)
         ? parsed.attentionEffect
         : DEFAULT_DASHBOARD_SETTINGS.attentionEffect,
       projectLayout:
-        parsed.schemaVersion === DASHBOARD_SETTINGS_SCHEMA_VERSION &&
-        isHudProjectLayout(parsed.projectLayout)
+        schemaVersion >= 2 && isHudProjectLayout(parsed.projectLayout)
           ? parsed.projectLayout
           : DEFAULT_DASHBOARD_SETTINGS.projectLayout,
       showUsageStrip:

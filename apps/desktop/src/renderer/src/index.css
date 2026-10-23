@@ -6,7 +6,7 @@
   color-scheme: light;
   --canvas: #fafafa;
   --hud-background-rgb: 250, 250, 248;
-  --hud-opacity: 0.92;
+  --hud-opacity: 0.37;
   --ink: #111214;
   --ink-700: #34363a;
   --ink-muted: #62646a;
@@ -885,6 +885,28 @@ body[data-surface='settings'] {
     font-size: 12px;
     font-weight: 750;
     letter-spacing: 0.12em;
+  }
+
+  .project-deck-wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+  }
+
+  .project-deck-edition {
+    display: inline-grid;
+    height: 1rem;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--attention) 52%, transparent);
+    border-radius: 0.26rem;
+    padding: 0 0.28rem;
+    background: color-mix(in srgb, var(--attention) 9%, transparent);
+    color: var(--attention);
+    font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+    font-size: 8px;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: 0.08em;
   }
 
   .project-deck-signal {

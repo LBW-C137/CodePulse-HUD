@@ -87,6 +87,10 @@ export interface DeviceAgentStatusV1 {
 
 /** `GET /api/v1/device/status` 的完整 JSON 响应。 */
 export interface DeviceStatusV1 {
+  /** Optional additive display extension; legacy firmware ignores it. */
+  display?: import('./device-display.js').DeviceDisplayConfig
+  threads?: import('./device-display.js').DeviceThreadV1[]
+  threadTotal?: number
   protocolVersion: typeof DEVICE_PROTOCOL_VERSION
   /** 展示相关字段的稳定修订号；可用于跳过无变化的水墨屏刷新。 */
   revision: string

@@ -1,4 +1,4 @@
-import { workspaceKey, type AgentRuntimeState, type AgentType } from '@codepulse/shared'
+import { hudProviderRank, workspaceKey, type AgentRuntimeState, type AgentType } from '@codepulse/shared'
 import type { AgentPanel } from './displayAgents.js'
 import { visibleRateLimitWindows } from './panelFormat.js'
 
@@ -127,13 +127,7 @@ export function projectSourceLabel(agentType: AgentType): string {
  * Cards within one provider keep their first-seen order (the sort is stable and
  * the panels arrive pre-ordered by the persisted project order).
  */
-function agentTypeRank(agentType: AgentType): number {
-  if (agentType === 'claude_code') return 0
-  if (agentType === 'codex') return 1
-  if (agentType === 'kimi') return 2
-  if (agentType === 'grok') return 3
-  return Number.MAX_SAFE_INTEGER - 1
-}
+const agentTypeRank = hudProviderRank
 
 /**
  * A group ranks by its front-most provider, so a project with a Claude card

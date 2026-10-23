@@ -173,17 +173,18 @@ test('HUD aggregation cannot let active work hide another project notification',
   )
 })
 
-test('tray uses neutral routine color and one orange attention language', () => {
+test('tray keeps orange as brand color and reserves the badge for attention', () => {
   assert.equal(trayVisualToneFor('idle'), 'neutral')
   assert.equal(trayVisualToneFor('running'), 'neutral')
-  assert.deepEqual(trayVisualColorFor('idle'), [148, 163, 184])
-  assert.deepEqual(trayVisualColorFor('running'), [148, 163, 184])
+  assert.deepEqual(trayVisualColorFor('idle'), [249, 115, 22])
+  assert.deepEqual(trayVisualColorFor('running'), [249, 115, 22])
+  assert.deepEqual(trayIconPngFor('idle'), trayIconPngFor('running'))
   for (const state of ['attention', 'done_unread', 'error', 'stuck', 'limited'] as const) {
     assert.equal(trayVisualToneFor(state), 'attention')
     assert.deepEqual(trayVisualColorFor(state), [249, 115, 22])
     assert.deepEqual(trayIconPngFor(state), trayIconPngFor('attention'))
   }
-  assert.notDeepEqual(trayIconPngFor('running'), trayIconPngFor('attention'))
+  assert.notDeepEqual(trayIconPngFor('idle'), trayIconPngFor('attention'))
 })
 
 test('tray labels every supported CLI without folding Kimi into Claude', () => {

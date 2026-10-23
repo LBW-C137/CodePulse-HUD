@@ -9,6 +9,7 @@ import {
   type HudProjectLayout,
   type ThemePreference,
 } from '../lib/dashboardSettings.js'
+import { DeviceDisplayPanel } from './DeviceDisplayPanel.js'
 import { DeviceProvisioningPanel } from './DeviceProvisioningPanel.js'
 
 interface Props {
@@ -291,6 +292,7 @@ export function SettingsDialog({
             </div>
           </section>
 
+          <DeviceDisplayPanel />
           <DeviceProvisioningPanel copy={copy.deviceProvisioning} />
         </div>
       </section>

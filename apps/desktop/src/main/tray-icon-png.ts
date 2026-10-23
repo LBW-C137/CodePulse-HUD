@@ -3,10 +3,7 @@ import type { AgentType, OverallState } from '@codepulse/shared'
 
 export type TrayVisualTone = 'neutral' | 'attention'
 
-const TONE_COLORS: Record<TrayVisualTone, readonly [number, number, number]> = {
-  neutral: [148, 163, 184],
-  attention: [249, 115, 22],
-}
+const BRAND_ORANGE = [249, 115, 22] as const
 
 const crcTable = buildCrcTable()
 
@@ -15,34 +12,56 @@ export function trayIconPngFor(state: OverallState, size = 32): Buffer {
   const raw = Buffer.alloc(size * (size * 4 + 1))
   const cx = (size - 1) / 2
   const cy = (size - 1) / 2
-  const outerRadius = size * 0.45
-  const innerRadius = size * 0.37
+  const half = size * 0.42
+  const radius = size * 0.19
+  const borderWidth = Math.max(1, size * 0.045)
+  const showsAttentionBadge = trayVisualToneFor(state) === 'attention'
   let p = 0
 
   for (let y = 0; y < size; y++) {
     raw[p++] = 0
     for (let x = 0; x < size; x++) {
-      const dx = x - cx
-      const dy = y - cy
-      const distance = Math.hypot(dx, dy)
+      const sampleX = x + 0.5
+      const sampleY = y + 0.5
+      const panelDistance = roundedRectDistance(sampleX, sampleY, cx, cy, half, half, radius)
+      const panelCoverage = coverageFor(panelDistance)
+      const innerDistance = roundedRectDistance(
+        sampleX,
+        sampleY,
+        cx,
+        cy,
+        half - borderWidth,
+        half - borderWidth,
+        radius - borderWidth,
+      )
+      const borderCoverage = Math.max(0, panelCoverage - coverageFor(innerDistance))
       let rgba: [number, number, number, number] = [0, 0, 0, 0]
 
-      if (distance <= outerRadius) {
-        const shade = Math.max(0, 1 - distance / outerRadius)
-        const base = Math.round(236 + shade * 18)
-        rgba = [base, Math.min(255, base + 3), 255, 255]
+      if (panelCoverage > 0) {
+        const verticalSheen = Math.max(0, 1 - sampleY / size)
+        const base = Math.round(247 + verticalSheen * 8)
+        rgba = [base, Math.min(255, base + 1), 255, Math.round(218 * panelCoverage)]
       }
 
-      if (distance > innerRadius && distance <= outerRadius) {
-        rgba = blend(rgba, [accentR, accentG, accentB, 60])
+      if (borderCoverage > 0) {
+        rgba = blend(rgba, [accentR, accentG, accentB, Math.round(105 * borderCoverage)])
       }
 
-      if (onPulsePath(x, y, size) && Math.hypot(x - cx, y - cy) > size * 0.08) {
+      if (onPulsePath(sampleX, sampleY, size)) {
+        rgba = blend(rgba, [255, 255, 255, 145])
         rgba = blend(rgba, [accentR, accentG, accentB, 255])
       }
 
-      if (state !== 'idle' && Math.hypot(x - size * 0.72, y - size * 0.72) <= size * 0.1) {
+      if (onHudCorner(sampleX, sampleY, size)) {
         rgba = blend(rgba, [accentR, accentG, accentB, 255])
+      }
+
+      if (showsAttentionBadge) {
+        const badgeDistance = Math.hypot(sampleX - size * 0.77, sampleY - size * 0.23)
+        if (badgeDistance <= size * 0.145) rgba = blend(rgba, [255, 255, 255, 245])
+        if (badgeDistance <= size * 0.095) {
+          rgba = blend(rgba, [accentR, accentG, accentB, 255])
+        }
       }
 
       raw[p++] = rgba[0]
@@ -55,13 +74,13 @@ export function trayIconPngFor(state: OverallState, size = 32): Buffer {
   return buildPng(size, size, raw)
 }
 
-/** Keeps routine activity neutral and reserves orange for states needing notice. */
+/** The tone controls the small attention badge; orange itself is permanent brand color. */
 export function trayVisualToneFor(state: OverallState): TrayVisualTone {
   return state === 'idle' || state === 'running' ? 'neutral' : 'attention'
 }
 
-export function trayVisualColorFor(state: OverallState): readonly [number, number, number] {
-  return TONE_COLORS[trayVisualToneFor(state)]
+export function trayVisualColorFor(_state: OverallState): readonly [number, number, number] {
+  return BRAND_ORANGE
 }
 
 /** Human-readable CLI name used by the tray's compact status rows. */
@@ -85,8 +104,44 @@ function onPulsePath(x: number, y: number, size: number): boolean {
 
   return points.some((point, index) => {
     const next = points[index + 1]
-    return next ? distanceToSegment(x, y, point[0], point[1], next[0], next[1]) <= 1.15 : false
+    return next
+      ? distanceToSegment(x, y, point[0], point[1], next[0], next[1]) <= size * 0.044
+      : false
   })
+}
+
+function onHudCorner(x: number, y: number, size: number): boolean {
+  const stroke = size * 0.036
+  const start = size * 0.19
+  const end = size * 0.31
+  const oppositeStart = size - start
+  const oppositeEnd = size - end
+  const topLeft =
+    distanceToSegment(x, y, start, end, start, start) <= stroke ||
+    distanceToSegment(x, y, start, start, end, start) <= stroke
+  const bottomRight =
+    distanceToSegment(x, y, oppositeStart, oppositeEnd, oppositeStart, oppositeStart) <= stroke ||
+    distanceToSegment(x, y, oppositeStart, oppositeStart, oppositeEnd, oppositeStart) <= stroke
+  return topLeft || bottomRight
+}
+
+function roundedRectDistance(
+  x: number,
+  y: number,
+  cx: number,
+  cy: number,
+  halfWidth: number,
+  halfHeight: number,
+  radius: number,
+): number {
+  const safeRadius = Math.max(0, radius)
+  const dx = Math.abs(x - cx) - (halfWidth - safeRadius)
+  const dy = Math.abs(y - cy) - (halfHeight - safeRadius)
+  return Math.hypot(Math.max(dx, 0), Math.max(dy, 0)) + Math.min(Math.max(dx, dy), 0) - safeRadius
+}
+
+function coverageFor(distance: number): number {
+  return Math.max(0, Math.min(1, 0.5 - distance))
 }
 
 function distanceToSegment(
@@ -111,13 +166,15 @@ function blend(
   bottom: [number, number, number, number],
   top: [number, number, number, number],
 ): [number, number, number, number] {
-  const alpha = top[3] / 255
-  const inverse = 1 - alpha
+  const topAlpha = top[3] / 255
+  const bottomAlpha = bottom[3] / 255
+  const outAlpha = topAlpha + bottomAlpha * (1 - topAlpha)
+  if (outAlpha <= 0) return [0, 0, 0, 0]
   return [
-    Math.round(top[0] * alpha + bottom[0] * inverse),
-    Math.round(top[1] * alpha + bottom[1] * inverse),
-    Math.round(top[2] * alpha + bottom[2] * inverse),
-    Math.max(bottom[3], top[3]),
+    Math.round((top[0] * topAlpha + bottom[0] * bottomAlpha * (1 - topAlpha)) / outAlpha),
+    Math.round((top[1] * topAlpha + bottom[1] * bottomAlpha * (1 - topAlpha)) / outAlpha),
+    Math.round((top[2] * topAlpha + bottom[2] * bottomAlpha * (1 - topAlpha)) / outAlpha),
+    Math.round(outAlpha * 255),
   ]
 }
 

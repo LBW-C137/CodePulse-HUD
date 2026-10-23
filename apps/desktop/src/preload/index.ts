@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type {
   Agent,
   AgentType,
+  DeviceDisplayConfig,
+  DeviceDisplaySnapshot,
   DeviceProvisioningRequest,
   DeviceProvisioningSnapshot,
   StatusSnapshot,
@@ -55,6 +57,8 @@ const api = {
   installUpdate: (): Promise<UpdateInstallResult> => ipcRenderer.invoke('codepulse:install-update'),
   /** 主动扫本机 Codex/Grok 会话目录，返回最新 StatusHub 快照。 */
   syncSessions: (): Promise<StatusSnapshot> => ipcRenderer.invoke('codepulse:sync-sessions'),
+  getDeviceDisplay: (preview?: DeviceDisplayConfig): Promise<DeviceDisplaySnapshot> => ipcRenderer.invoke('codepulse:get-device-display', preview),
+  setDeviceDisplay: (config: DeviceDisplayConfig): Promise<DeviceDisplaySnapshot> => ipcRenderer.invoke('codepulse:set-device-display', config),
   getDeviceProvisioning: (): Promise<DeviceProvisioningSnapshot> =>
     ipcRenderer.invoke('codepulse:get-device-provisioning'),
   startDeviceScan: (): Promise<DeviceProvisioningSnapshot> =>

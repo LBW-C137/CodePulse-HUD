@@ -25,7 +25,7 @@ test('dashboard settings default to the light HUD with calm attention and every 
   const settings = readDashboardSettings(new MemoryStorage())
 
   assert.equal(settings.theme, 'light')
-  assert.equal(settings.hudOpacity, 92)
+  assert.equal(settings.hudOpacity, 37)
   assert.equal(settings.attentionEffect, 'steady')
   assert.equal(settings.projectLayout, 'list')
   assert.equal(settings.showUsageStrip, true)
@@ -67,7 +67,7 @@ test('dashboard settings preserve saved theme and CLI visibility while filling n
 
   const settings = readDashboardSettings(storage)
   assert.equal(settings.theme, 'dark')
-  assert.equal(settings.hudOpacity, 92)
+  assert.equal(settings.hudOpacity, 37)
   assert.equal(settings.attentionEffect, 'steady')
   assert.equal(settings.projectLayout, 'list')
   assert.equal(settings.showUsageStrip, true)
@@ -86,6 +86,28 @@ test('legacy manual palette selections remain explicit user preferences', () => 
   )
 
   assert.equal(readDashboardSettings(storage).theme, 'light')
+})
+
+test('legacy default HUD opacity migrates to 37 without replacing a custom value', () => {
+  const storage = new MemoryStorage()
+  storage.setItem(
+    'codepulse:dashboard-settings',
+    JSON.stringify({
+      schemaVersion: 2,
+      hudOpacity: 92,
+      projectLayout: 'grid',
+      visibleTools: {},
+    }),
+  )
+
+  assert.equal(readDashboardSettings(storage).hudOpacity, 37)
+  assert.equal(readDashboardSettings(storage).projectLayout, 'grid')
+
+  storage.setItem(
+    'codepulse:dashboard-settings',
+    JSON.stringify({ schemaVersion: 2, hudOpacity: 64, visibleTools: {} }),
+  )
+  assert.equal(readDashboardSettings(storage).hudOpacity, 64)
 })
 
 test('dashboard settings persist changes and apply the selected root theme', () => {

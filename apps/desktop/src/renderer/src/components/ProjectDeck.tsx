@@ -94,7 +94,10 @@ export function ProjectDeck({
       <header className="project-deck-header">
         <div className="project-deck-brand" aria-label="CodePulse HUD">
           <span className="project-deck-signal" aria-hidden="true" />
-          <span>CODEPULSE</span>
+          <span className="project-deck-wordmark">
+            <span>CODEPULSE</span>
+            <span className="project-deck-edition">HUD</span>
+          </span>
         </div>
       </header>
 

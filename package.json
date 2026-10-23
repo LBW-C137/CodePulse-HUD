@@ -23,6 +23,7 @@
     "build:packages": "pnpm -r --filter ./packages/* build",
     "dist": "pnpm --filter @codepulse-hud/desktop dist",
     "dist:win": "pnpm --filter @codepulse-hud/desktop dist:win",
+    "icon:generate": "node scripts/generate-app-icon.mjs",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tests/tsconfig.json",
     "test": "node tests/run-tests.mjs",
     "smoke": "node scripts/run-smoke.mjs",

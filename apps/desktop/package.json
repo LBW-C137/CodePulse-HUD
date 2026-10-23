@@ -11,11 +11,11 @@
     "dev": "electron-vite dev",
     "prestart": "pnpm rebuild:electron",
     "start": "electron-vite preview",
-    "build": "electron-vite build",
+    "build": "node scripts/check-device-preview.mjs && electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "dist": "electron-vite build && electron-builder --win",
-    "dist:win": "electron-vite build && electron-builder --win",
-    "dist:dir": "electron-vite build && electron-builder --dir",
+    "dist": "node scripts/check-device-preview.mjs && electron-vite build && electron-builder --win",
+    "dist:win": "node scripts/check-device-preview.mjs && electron-vite build && electron-builder --win",
+    "dist:dir": "node scripts/check-device-preview.mjs && electron-vite build && electron-builder --dir",
     "rebuild:electron": "electron-builder install-app-deps"
   },
   "dependencies": {

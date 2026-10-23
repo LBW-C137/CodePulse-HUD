@@ -32,6 +32,7 @@ test('Codex detection still probes the Windows cmd shim first', async () => {
   const commands: string[] = []
   await detectCodexAgent({
     platform: 'win32',
+    env: {},
     runCommand: async (command) => {
       commands.push(command)
       return { ok: true, stdout: 'codex-cli 1.2.3' }
@@ -39,6 +40,21 @@ test('Codex detection still probes the Windows cmd shim first', async () => {
   })
 
   assert.equal(commands[0], 'codex.cmd')
+})
+
+test('Codex detection honors an explicitly configured CLI path', async () => {
+  const commands: string[] = []
+  const agent = await detectCodexAgent({
+    platform: 'win32',
+    env: { CODEX_CLI_PATH: 'C:/tools/codex.exe' },
+    runCommand: async (command) => {
+      commands.push(command)
+      return { ok: true, stdout: 'codex-cli 1.2.3' }
+    },
+  })
+
+  assert.deepEqual(commands, ['C:/tools/codex.exe'])
+  assert.equal(agent.installed, true)
 })
 
 test('Grok detection reports installed CLI and CodePulse hook file', async () => {

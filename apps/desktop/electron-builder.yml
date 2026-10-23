@@ -55,6 +55,7 @@ extraResources:
 asarUnpack:
   - '**/*.node'
 win:
+  # The executable, shortcuts, and NSIS installer all derive from this alpha PNG.
   icon: build/icon.png
   artifactName: CodePulse-HUD_${version}_${arch}-setup.${ext}
   target:

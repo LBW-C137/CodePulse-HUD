@@ -104,6 +104,28 @@
         letter-spacing: 0.16em;
       }
 
+      .brand-wordmark {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .brand-edition {
+        display: inline-grid;
+        height: 17px;
+        place-items: center;
+        border: 1px solid rgba(240, 120, 24, 0.5);
+        border-radius: 4px;
+        padding: 0 5px;
+        background: rgba(240, 120, 24, 0.09);
+        color: var(--orange);
+        font-family: Inter, 'Segoe UI', sans-serif;
+        font-size: 8px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0.08em;
+      }
+
       .brand-mark {
         position: relative;
         width: 18px;
@@ -316,8 +338,11 @@
   <body>
     <main class="hud">
       <header class="hud-header">
-        <div class="brand"><span class="brand-mark"></span><span>CODEPULSE</span></div>
-        <div class="edition">HUD · v1.4</div>
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <span class="brand-wordmark">CODEPULSE <span class="brand-edition">HUD</span></span>
+        </div>
+        <div class="edition">v1.4</div>
       </header>
 
       <section class="deck">

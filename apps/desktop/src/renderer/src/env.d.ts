@@ -2,6 +2,8 @@
 import type {
   Agent,
   AgentType,
+  DeviceDisplayConfig,
+  DeviceDisplaySnapshot,
   DeviceProvisioningRequest,
   DeviceProvisioningSnapshot,
   StatusSnapshot,
@@ -40,6 +42,8 @@ export interface CodePulseApi {
   dismissUpdate: () => Promise<boolean>
   installUpdate: () => Promise<UpdateInstallResult>
   syncSessions: () => Promise<StatusSnapshot>
+  getDeviceDisplay: (preview?: DeviceDisplayConfig) => Promise<DeviceDisplaySnapshot>
+  setDeviceDisplay: (config: DeviceDisplayConfig) => Promise<DeviceDisplaySnapshot>
   getDeviceProvisioning: () => Promise<DeviceProvisioningSnapshot>
   startDeviceScan: () => Promise<DeviceProvisioningSnapshot>
   stopDeviceScan: () => Promise<DeviceProvisioningSnapshot>

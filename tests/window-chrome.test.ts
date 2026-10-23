@@ -41,6 +41,20 @@ test('renderer owns rounded HUD geometry inside the transparent native window', 
   assert.doesNotMatch(css, /--radius-window:/)
 })
 
+test('HUD wordmark and application icon share an explicit HUD identity', () => {
+  const appSource = readFileSync('apps/desktop/src/renderer/src/components/ProjectDeck.tsx', 'utf8')
+  const css = readFileSync('apps/desktop/src/renderer/src/index.css', 'utf8')
+  const icon = readFileSync('apps/desktop/src/renderer/src/assets/codepulse-icon.svg', 'utf8')
+  const builder = readFileSync('apps/desktop/electron-builder.yml', 'utf8')
+
+  assert.match(appSource, /className="project-deck-edition">HUD</)
+  assert.match(css, /\.project-deck-edition \{/)
+  assert.match(icon, /CodePulse HUD logo/)
+  assert.match(icon, /#F97316/)
+  assert.match(icon, /stop-opacity="0\.(?:7[2-9]|8|9)/)
+  assert.match(builder, /icon: build\/icon\.png/)
+})
+
 test('default HUD renders a project-first single lane with an optional compact grid', () => {
   const appSource = readFileSync('apps/desktop/src/renderer/src/components/ProjectDeck.tsx', 'utf8')
   const css = readFileSync('apps/desktop/src/renderer/src/index.css', 'utf8')

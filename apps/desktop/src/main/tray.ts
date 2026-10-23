@@ -32,7 +32,7 @@ export class TrayController {
     this.snapshot = snapshot
     const hudOverall = deriveHudOverall(snapshot)
     this.tray.setImage(trayIconFor(hudOverall))
-    this.tray.setToolTip(`CodePulse HUD - ${overallLabel(hudOverall)}`)
+    this.tray.setToolTip(`CodePulse HUD · ${overallLabel(hudOverall)}`)
     this.tray.setContextMenu(this.buildMenu(snapshot))
   }
 
